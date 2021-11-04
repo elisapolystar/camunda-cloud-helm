@@ -113,7 +113,7 @@ spec:
         - name: config
           mountPath: /usr/local/zeebe/config/application.yaml
           subPath: application.yaml
-        - name: config
+        - name: script
           mountPath: /usr/local/bin/startup.sh
           subPath: startup.sh
         - name: data
@@ -135,6 +135,10 @@ spec:
         configMap:
           name: {{ include "zeebe-cluster.fullname" . }}
           defaultMode: 0744
+      - name: script
+        configMap:
+          name: {{ include "zeebe-cluster.fullname" . }}
+          defaultMode: 0777
       - name: exporters
         emptyDir: {}
       {{- if .Values.extraVolumes}}
