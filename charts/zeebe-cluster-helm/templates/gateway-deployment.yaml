@@ -40,7 +40,7 @@ spec:
             - containerPort: {{  .Values.serviceInternalPort }}
               name: {{ default "internal" .Values.serviceInternalName  }}              
             - containerPort: {{  .Values.hazelcastPort }}
-              name: {{ default "hazelcast" .Values.hazelcastPort  }}
+              name: "hazelcast"
           env:
             - name: ZEEBE_STANDALONE_GATEWAY
               value: "true"
