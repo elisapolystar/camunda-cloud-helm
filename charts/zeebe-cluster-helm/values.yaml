@@ -71,6 +71,7 @@ serviceHttpPort: 9600
 serviceGatewayPort: 26500
 serviceCommandPort: 26501
 serviceInternalPort: 26502
+hazelcastPort: 5701
 priorityClassName: ""
 resources:
   requests:
