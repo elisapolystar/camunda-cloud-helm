@@ -100,6 +100,8 @@ spec:
           name: {{ default "command" .Values.serviceCommandName  }}
         - containerPort: {{ .Values.serviceInternalPort  }}
           name: {{ default "internal" .Values.serviceInternalName  }}
+        - containerPort: {{ .Values.hazelcastPort  }}
+          name: "hazelcast"
         readinessProbe:
           httpGet:
             path: {{ .Values.probePath }}
