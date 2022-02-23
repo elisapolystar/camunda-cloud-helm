@@ -21,5 +21,8 @@ spec:
     - port: {{ .Values.serviceCommandPort }}
       protocol: TCP
       name: {{ default "command" .Values.serviceCommandName }}
+    - port: {{ .Values.hazelcastPort }}
+      protocol: TCP
+      name: "hazelcast"
   selector:
     {{- include "zeebe-cluster.labels.broker" . | nindent 4 }}
