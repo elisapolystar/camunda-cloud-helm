@@ -2,11 +2,14 @@ dependencies:
 - name: elasticsearch
   repository: https://helm.elastic.co
   version: 7.10.2
+- name: opensearch
+  repository: https://opensearch-project.github.io/helm-charts/
+  version: 1.8.0
 - name: kibana
   repository: https://helm.elastic.co
   version: 7.9.3
 - name: kube-prometheus-stack
   repository: https://prometheus-community.github.io/helm-charts
   version: 12.0.4
-digest: sha256:a31c117476c52d7f2aaac521af1d5aebb4c0c7c2a3c59eaad16dfee7035a9cd5
-generated: "2021-12-23T13:19:59.735061+02:00"
+digest: sha256:d0a8f85c97a601c7af44209aa3c461800a64e357db8d6518fe37e96fad72bfd5
+generated: "2022-03-01T09:21:58.162915+02:00"

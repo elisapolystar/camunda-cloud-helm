@@ -3,13 +3,17 @@ appVersion: "1.2.8"
 description: Zeebe Cluster Helm Chart for Kubernetes
 name: zeebe-cluster-helm
 type: application
-version: 1.2.13
+version: 1.2.14
 icon: https://helm.camunda.io/imgs/zeebe-logo.png
 dependencies:
 - name: elasticsearch
   repository: "https://helm.elastic.co"
   version: 7.10.2
   condition: "elasticsearch.enabled"
+- name: opensearch
+  repository: "https://opensearch-project.github.io/helm-charts/"
+  version: 1.8.0
+  condition: "opensearch.enabled"
 - name: kibana
   repository: "https://helm.elastic.co" 
   version: 7.9.3

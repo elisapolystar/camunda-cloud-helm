@@ -10,6 +10,10 @@ global:
     url:
     host: "elasticsearch-master"
     port: 9200
+  opensearch:
+    url:
+    host: "opensearch-cluster-master"
+    port: 9200
   zeebe: "{{ .Release.Name }}-zeebe"
 
 image:
@@ -44,8 +48,12 @@ gateway:
     annotations: {}
 
 elasticsearch:
-  enabled: true
+  enabled: false
   imageTag: 7.16.2
+
+opensearch:
+  enabled: true
+  imageTag: 1.2.4
 
 kibana:
   enabled: false
