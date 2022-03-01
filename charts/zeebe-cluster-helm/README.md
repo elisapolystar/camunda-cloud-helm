@@ -1,17 +1,19 @@
-[![Community Extension](https://img.shields.io/badge/Community%20Extension-An%20open%20source%20community%20maintained%20project-FF4700)](https://github.com/camunda-community-hub/community)[![Lifecycle: Incubating](https://img.shields.io/badge/Lifecycle-Incubating-blue)](https://github.com/Camunda-Community-Hub/community/blob/main/extension-lifecycle.md#incubating-)[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Community Extension](https://img.shields.io/badge/Community%20Extension-An%20open%20source%20community%20maintained%20project-FF4700)](https://github.com/camunda-community-hub/community)[![Lifecycle:
+Incubating](https://img.shields.io/badge/Lifecycle-Incubating-blue)](https://github.com/Camunda-Community-Hub/community/blob/main/extension-lifecycle.md#incubating-)[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 # Zeebe Cluster Helm Chart
 
-This functionality is in beta and is subject to change. The design and code is less mature than official GA features and is provided as-is with no warranties. Beta features are not subject to the support SLA of official GA features.
+This functionality is in beta and is subject to change. The design and code is less mature than official GA features and
+is provided as-is with no warranties. Beta features are not subject to the support SLA of official GA features.
 
 ## Requirements
 
 * [Helm](https://helm.sh/) >= 3.x +
 * Kubernetes >= 1.18+
-* Minimum cluster requirements include the following to run this chart with default settings. All of these settings are configurable.
-  * Three Kubernetes nodes to respect the default "hard" affinity settings
-  * 1GB of RAM for the JVM heap
-
+* Minimum cluster requirements include the following to run this chart with default settings. All of these settings are
+  configurable.
+    * Three Kubernetes nodes to respect the default "hard" affinity settings
+    * 1GB of RAM for the JVM heap
 
 ## Installing
 
@@ -27,8 +29,9 @@ This functionality is in beta and is subject to change. The design and code is l
   helm install zb zeebe/zeebe-cluster-helm
   ```
 
- ## Configuration
-  | Parameter                     | Description                                                                                                                                                                                                                                                                                                                | Default                                                                                                                   |
+## Configuration
+
+| Parameter                     | Description                                                                                                                                                                                                                                                                                                                | Default                                                                                                                   |
 | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
 | `labels`                 | labels to be applied to the StatefulSet and Service                                                                                                                                | `app: zeebe`                                                                                                           |
 | `annotations`                 | annotations to be applied to the StatefulSet and Service                                                                                                                                | ``                                                                                                           |
@@ -38,6 +41,11 @@ This functionality is in beta and is subject to change. The design and code is l
 | `global.elasticsearch.port`         | ElasticSearch port to use in Elasticsearch Exporter connection | `9200` |
 | `global.elasticsearch.url`         | ElasticSearch full url to use in Elasticsearch Exporter connection. This config overrides the `host` and `port` above.  |  |
 | `elasticsearch.enabled`                 | Enable ElasticSearch deployment as part of the Zeebe Cluster                                                                                                                                | `true`                                                                                                           |
+| `global.opensearch.disableExporter` | Using ES exporter for OpenSearch. Disable [Elasticsearch Exporter](https://github.com/camunda-cloud/zeebe/tree/develop/exporters/elasticsearch-exporter) in Zeebe                                                                                                                                | `false`                                                                                                           |
+| `global.opensearch.host`         | OpenSearch host to use in OpenSearch Exporter connection  | `opensearch-cluster-master` |
+| `global.opensearch.port`         | OpenSearch port to use in Opensearch Exporter connection | `9200` |
+| `global.opensearch.url`         | OpenSearch full url to use in Opensearch Exporter connection. This config overrides the `host` and `port` above.  |  |
+| `opensearch.enabled`                 | Enable OpenSearch deployment as part of the Zeebe Cluster                                                                                                                                | `true`                                                                                                           |
 | `kibana.enabled`                 | Enable Kibana deployment as part of the Zeebe Cluster                                                                                                                                | `false`                                                                                                           |
 | `prometheus.enabled`                 | Enable Prometheus operator as part of the Zeebe Cluster                                                                                                                          | `false`                                                                                                           |
 | `prometheus.servicemonitor.enabled`                 | Deploy a `ServiceMonitor` for your Zeebe Cluster                                                                                                                                 | `false`                                                                                                           |
@@ -88,13 +96,13 @@ This functionality is in beta and is subject to change. The design and code is l
 ## Examples
 
 ### Env Example
+
 ```yaml
 
 env:
   - name: ZEEBE_GATEWAY_MONITORING_ENABLED
     value: "true"
 ```
-
 
 ## Adding dynamic exporters to Zeebe Brokers
 
@@ -121,7 +129,10 @@ env:
   ZEEBE_BROKER_EXPORTERS_HAZELCAST_CLASSNAME: io.zeebe.hazelcast.exporter.HazelcastExporter
   ZEEBE_HAZELCAST_REMOTE_ADDRESS: "{{ .Release.Name }}-hazelcast"
 ```
-This example is downloading the exporters Jar from an URL and adding the Jars to the `exporters` directory that will be scanned for jars and added to the zeebe broker classpath. Then with `environment variables` you can configure the exporter parameters.
+
+This example is downloading the exporters Jar from an URL and adding the Jars to the `exporters` directory that will be
+scanned for jars and added to the zeebe broker classpath. Then with `environment variables` you can configure the
+exporter parameters.
 
 ## Dependencies
 
@@ -131,7 +142,8 @@ This chart currently depends on the following charts:
 * [Kibana Helm Chart](https://github.com/elastic/helm-charts/tree/master/kibana)
 * [Prometheus Operator Helm Chart](https://github.com/helm/charts/tree/master/stable/prometheus-operator)
 
-These dependencies can be turned on or off and parameters can be overriden from these dependent charts by changing the `values.yaml` file. For example:
+These dependencies can be turned on or off and parameters can be overriden from these dependent charts by changing
+the `values.yaml` file. For example:
 
 ```yaml
 elasticsearch:
@@ -143,7 +155,8 @@ kibana:
 
 ## Development
 
-For development purpose you might want to deploy and test the charts without creating a new release. In order to do this you can run the following:
+For development purpose you might want to deploy and test the charts without creating a new release. In order to do this
+you can run the following:
 
 ```sh
  helm install <RELEASENAME> charts/zeebe-cluster-helm/
