@@ -1,9 +1,9 @@
 global:
   zeebe: "{{ .Release.Name }}-zeebe"
   elasticsearch:
-    host: "elasticsearch-master"
+    host: "opensearch-cluster-master"
     port: 9200
-    clusterName: "elasticsearch"
+    clusterName: "opensearch"
 
 logging:
   level:

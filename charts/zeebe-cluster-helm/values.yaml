@@ -8,7 +8,7 @@ annotations: {}
 global:
   elasticsearch:
     url:
-    host: "elasticsearch-master"
+    host: "opensearch-cluster-master"
     port: 9200
   zeebe: "{{ .Release.Name }}-zeebe"
 
@@ -44,12 +44,16 @@ gateway:
     annotations: {}
 
 elasticsearch:
+  enabled: false
+  imageTag: 7.16.2
+
+opensearch:
   enabled: true
   imageTag: 7.16.2
 
 kibana:
   enabled: false
-  imageTag: 7.16.2
+  imageTag: 1.2.4
 
 prometheus:
   enabled: false
