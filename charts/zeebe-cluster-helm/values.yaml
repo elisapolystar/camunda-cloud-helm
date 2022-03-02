@@ -49,11 +49,11 @@ elasticsearch:
 
 opensearch:
   enabled: true
-  imageTag: 7.16.2
+  imageTag: 1.2.4
 
 kibana:
   enabled: false
-  imageTag: 1.2.4
+  imageTag: 7.16.2
 
 prometheus:
   enabled: false
