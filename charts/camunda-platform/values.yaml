@@ -47,11 +47,11 @@ global:
     # Elasticsearch.url can be used to configure the URL to access elasticsearch, if not set services fallback to host and port configuration
     url:
     # Elasticsearch.host defines the elasticsearch host, ideally the service name inside the namespace
-    host: "elasticsearch-master"
+    host: "opensearch-cluster-master"
     # Elasticsearch.port defines the elasticsearch port, under which elasticsearch can be accessed
     port: 9200
     # Elasticsearch.clusterName defines the cluster name which is used by Elasticsearch
-    clusterName: "elasticsearch"
+    clusterName: "openseaerch"
     # Elasticsearch.prefix defines the prefix which is used by the Zeebe Elasticsearch Exporter to create Elasticsearch indexes
     prefix: zeebe-record
   # ZeebeClusterName defines the cluster name for the Zeebe cluster. All Zeebe pods get this prefix in their name and the brokers uses that as cluster name.
@@ -62,6 +62,7 @@ global:
 
   # Identity configuration to configure identity specifics on global level, which can be accessed by other sub-charts
   identity:
+    enabled: false
     # Identity.auth configuration, to configure Identity authentication setup
     auth:
       # Identity.auth.enabled if true, enables the Identity authentication otherwise basic-auth will be used on all services.
@@ -370,7 +371,7 @@ zeebe-gateway:
 # Operate configuration for the operate sub chart.
 operate:
   # Enabled if true, the operate deployment and its related resources are deployed via a helm release
-  enabled: true
+  enabled: false
 
   # Image configuration to configure the operate image specifics
   image:
@@ -464,7 +465,7 @@ operate:
 # Tasklist configuration for the tasklist sub chart.
 tasklist:
   # Enabled if true, the tasklist deployment and its related resources are deployed via a helm release
-  enabled: true
+  enabled: false
 
   # Image configuration to configure the tasklist image specifics
   image:
@@ -535,7 +536,7 @@ tasklist:
 # Optimize configuration for the Optimize sub chart.
 optimize:
   # Enabled if true, the Optimize deployment and its related resources are deployed via a helm release
-  enabled: true
+  enabled: false
 
   # Image configuration to configure the Optimize image specifics
   image:
@@ -651,7 +652,7 @@ identity:
   #
   # Note: Identity is required by Optimize. If Identity is disabled, then Optimize will be unusable.
   #       If you don't need Optimize, then make sure to disable both: set global.identity.auth.enabled=false AND optimize.enabled=false.
-  enabled: true
+  enabled: false
 
   # FirstUser configuration to configure properties of the first Identity user, which can be used to access all
   # web applications
@@ -759,7 +760,7 @@ identity:
   podSecurityContext: {}
 
 elasticsearch:
-  enabled: true
+  enabled: false
   extraEnvs:
     - name: "xpack.security.enabled"
       value: "false"
