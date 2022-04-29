@@ -1,0 +1,60 @@
+name: Integration Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request: { }
+  workflow_dispatch: { }
+
+env:
+  HELM_VERSION: 3.6.3
+  KUBECTL_VERSION: 'latest'
+  KUBECTX: 'gke_zeebe-io_europe-west1-b_zeebe-cluster'
+
+jobs:  
+  build:
+    if: github.ref == 'refs/heads/main' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    env:
+      KUBECONFIG: .github/config/kubeconfig
+
+    # Add "id-token" with the intended permissions.
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+      
+    steps:
+    - uses: actions/checkout@v3
+    - id: 'auth'
+      name: 'Authenticate to Google Cloud'
+      uses: 'google-github-actions/auth@v0'
+      with:
+        workload_identity_provider: 'projects/628707732411/locations/global/workloadIdentityPools/helm-identity-pool/providers/helm-identity-provider'
+        service_account: 'camunda-platform-helm@zeebe-io.iam.gserviceaccount.com'
+    - id: 'get-credentials'
+      name: 'Get GKE credentials'
+      uses: 'google-github-actions/get-gke-credentials@v0'
+      with:
+        cluster_name: 'zeebe-cluster'
+        location: 'europe-west1-b'
+    # The KUBECONFIG env var is automatically exported and picked up by kubectl.
+    - id: 'check-credentials'
+      name: 'Check credentials'
+      run: 'kubectl auth can-i create deployment'
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.17
+    - name: Install Helm
+      uses: azure/setup-helm@v1
+      with:
+        version: "${{ env.HELM_VERSION }}"
+    - name: Add helm repos
+      run: |
+        helm repo add elastic https://helm.elastic.co
+        helm repo add bitnami https://charts.bitnami.com/bitnami
+        helm repo update
+    - name: Get Helm Deps
+      run: make deps
+    - name: Test
+      run: make it
