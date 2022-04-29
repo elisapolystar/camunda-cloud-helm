@@ -51,7 +51,7 @@ global:
     # Elasticsearch.port defines the elasticsearch port, under which elasticsearch can be accessed
     port: 9200
     # Elasticsearch.clusterName defines the cluster name which is used by Elasticsearch
-    clusterName: "openseaerch"
+    clusterName: "opensearch"
     # Elasticsearch.prefix defines the prefix which is used by the Zeebe Elasticsearch Exporter to create Elasticsearch indexes
     prefix: zeebe-record
   # ZeebeClusterName defines the cluster name for the Zeebe cluster. All Zeebe pods get this prefix in their name and the brokers uses that as cluster name.
