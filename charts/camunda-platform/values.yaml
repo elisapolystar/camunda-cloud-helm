@@ -65,7 +65,7 @@ global:
     # Identity.auth configuration, to configure Identity authentication setup
     auth:
       # Identity.auth.enabled if true, enables the Identity authentication otherwise basic-auth will be used on all services.
-      enabled: true
+      enabled: false
 
       # Identity.auth.publicIssuerUrl defines the token issuer (Keycloak) URL, where the services can request JWT tokens.
       # Should be public accessible, per default we assume a port-forward to Keycloak (18080) is created before login.
