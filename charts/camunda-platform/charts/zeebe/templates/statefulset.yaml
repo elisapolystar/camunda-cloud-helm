@@ -35,6 +35,9 @@ spec:
       imagePullSecrets:
         {{ toYaml .Values.global.image.pullSecrets | indent 8 | trim }}
       {{- end }}
+      {{- if .Values.podSecurityContext }}
+      securityContext: {{ .Values.podSecurityContext | toYaml | nindent 8 }}
+      {{- end }}
       initContainers:
         {{- with .Values.extraInitContainers }}
         {{- tpl (toYaml . ) $ | nindent 8  }}
