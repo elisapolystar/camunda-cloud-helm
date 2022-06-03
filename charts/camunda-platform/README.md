@@ -3,21 +3,21 @@
 # Camunda Platform Helm Chart
 
 - [Camunda Platform Helm Chart](#camunda-platform-helm-chart)
-  * [Requirements](#requirements)
-  * [Installing](#installing)
-  * [Configuration](#configuration)
-    + [Global](#global)
-    + [Camunda Platform](#camunda-platform)
-    + [Zeebe](#zeebe)
-    + [Zeebe Gateway](#zeebe-gateway)
-    + [Operate](#operate)
-    + [Tasklist](#tasklist)
-    + [Optimize](#optimize)
-    + [Identity](#identity)
-    + [Elasticsearch](#elasticsearch)
-  * [Adding dynamic exporters to Zeebe Brokers](#adding-dynamic-exporters-to-zeebe-brokers)
-  * [Development](#development)
-  * [Releasing the Charts](#releasing-the-charts)
+  - [Requirements](#requirements)
+  - [Installing](#installing)
+  - [Configuration](#configuration)
+    - [Global](#global)
+    - [Camunda Platform](#camunda-platform)
+    - [Zeebe](#zeebe)
+    - [Zeebe Gateway](#zeebe-gateway)
+    - [Operate](#operate)
+    - [Tasklist](#tasklist)
+    - [Optimize](#optimize)
+    - [Identity](#identity)
+    - [Elasticsearch](#elasticsearch)
+  - [Adding dynamic exporters to Zeebe Brokers](#adding-dynamic-exporters-to-zeebe-brokers)
+  - [Development](#development)
+  - [Releasing the Charts](#releasing-the-charts)
 
 <small><i><a href='http://ecotrust-canada.github.io/markdown-toc/'>Table of contents generated with markdown-toc</a></i></small>
 
@@ -53,7 +53,7 @@ Check out the default [values.yaml](values.yaml) file, which contains the same c
 | | `labels` | Can be used to define common labels, which should be applied to all deployments | |
 | | `image.tag` | Defines the tag / version which should be used in the chart. | |
 | | `image.pullPolicy` | Defines the [image pull policy](https://kubernetes.io/docs/concepts/containers/images/#image-pull-policy) which should be used. | IfNotPresent |
-| | `image.pullSecrets` | Can be used to configure [image pull secrets](https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod) which should be used. | `[]` |
+| | `image.pullSecrets` | Can be used to configure [image pull secrets](https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod). Also it could be configured per component separately. | `[]` |
 | | `elasticsearch.disableExporter` | If true, disables the [Elasticsearch Exporter](https://github.com/camunda-cloud/zeebe/tree/develop/exporters/elasticsearch-exporter) in Zeebe | `false` |
 | | `elasticsearch.url` | Can be used to configure the URL to access Elasticsearch. When not set, services fallback to host and port configuration. | |
 | | `elasticsearch.host` | Defines the Elasticsearch host, ideally the service name inside the namespace. | `elasticsearch-master` |
@@ -100,6 +100,7 @@ Information about Zeebe you can find [here](https://docs.camunda.io/docs/compone
 | | `image` | Configuration to configure the Zeebe image specifics. | |
 | | `image.repository` | Defines which image repository to use. | `camunda/zeebe` |
 | | `image.tag` | Can be set to overwrite the global tag, which should be used in that chart. | ` ` |
+| | `image.pullSecrets` | Can be set to overwrite the global.image.pullSecrets | `{{ global.image.pullSecrets }}` |
 | | `clusterSize` | Defines the amount of brokers (=replicas), which are deployed via helm | `3` |
 | | `partitionCount` | Defines how many Zeebe partitions are set up in the cluster | `3` |
 | | `replicationFactor` | Defines how each partition is replicated, the value defines the number of nodes | `3` |
@@ -120,8 +121,8 @@ Information about Zeebe you can find [here](https://docs.camunda.io/docs/compone
 | | `serviceAccount.enabled` | If true, enables the broker service account | `true` |
 | | `serviceAccount.name` | Can be used to set the name of the broker service account | `""` |
 | | `serviceAccount.annotations` | Can be used to set the annotations of the broker service account | `{ }` |
-| | `cpuThreadCount` | Defines how many threads can be used for the processing on each broker pod | `2` |
-| | `ioThreadCount` | Defines how many threads can be used for the exporting on each broker pod | `2` |
+| | `cpuThreadCount` | Defines how many threads can be used for the processing on each broker pod | `3` |
+| | `ioThreadCount` | Defines how many threads can be used for the exporting on each broker pod | `3` |
 | | `resources` | Configuration to set [request and limit configuration for the container](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#requests-and-limits) | `requests:`<br>`  cpu: 800m`<br> `  memory: 1200Mi`<br>`limits:`<br>  ` cpu: 960m`<br>  ` memory: 1920Mi` |
 | | `persistenceType` | defines the type of persistence which is used by Zeebe. Possible values are: disk, local and memory. <br/> disk  - means a persistence volume claim is configured and used <br/> local - means the data is stored into the container, no volumeMount nor volume nor claim is configured <br/> ram   - means zeebe uses a tmpfs for the data persistence, be aware that this takes the limits into account | `disk` |
 | | `pvcSize` | Defines the [persistent volume claim](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#persistentvolumeclaims) size, which is used by each broker pod | `32Gi` |
@@ -158,6 +159,7 @@ Information about the Zeebe Gateway you can find [here](https://docs.camunda.io/
 | | `image` | Configuration to configure the zeebe-gateway image specifics. | |
 | | `image.repository` | Defines which image repository to use. | `camunda/zeebe` |
 | | `image.tag` | Can be set to overwrite the global tag, which should be used in that chart. | ` ` |
+| | `image.pullSecrets` | Can be set to overwrite the global.image.pullSecrets | `{{ global.image.pullSecrets }}` |
 | | `podAnnotations` | Can be used to define extra gateway pod annotations | `{ }` |
 | | `podLabels` | Can be used to define extra gateway pod labels | `{ }` |
 | | `logLevel` | Defines the log level which is used by the gateway | `info` |
@@ -181,6 +183,8 @@ Information about the Zeebe Gateway you can find [here](https://docs.camunda.io/
 | | `extraInitContainers` | Can be used to set up extra init containers for the gateway pods, useful for adding interceptors | `[ ]` |
 | | `service` | Configuration for the gateway service | |
 | | `service.type` | Defines the [type of the service](https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types) | `ClusterIP` |
+| | `service.loadBalancerIP` | Can be used to set [ip address](https://cloud.google.com/kubernetes-engine/docs/how-to/service-parameters#lb_ip) if service.type is LoadBalancer | `""` |
+| | `service.loadBalancerSourceRanges` | Can be used to set list of allowed [source ip ranges](https://cloud.google.com/kubernetes-engine/docs/how-to/service-parameters#lb_source_ranges) if service.type is LoadBalancer | `[ ]` |
 | | `service.httpPort` | Defines the port of the HTTP endpoint, where for example metrics are provided | `9600` |
 | | `service.httpName` | Defines the name of the HTTP endpoint, where for example metrics are provided | `http` |
 | | `service.gatewayPort` | Defines the port of the gateway endpoint, where client commands (gRPC) are sent to | `26500` |
@@ -204,6 +208,7 @@ Information about Operate you can find [here](https://docs.camunda.io/docs/compo
 | | `image` | Configuration to configure the Operate image specifics. | |
 | | `image.repository` | Defines which image repository to use. | `camunda/operate` |
 | | `image.tag` | Can be set to overwrite the global tag, which should be used in that chart. | `` |
+| | `image.pullSecrets` | Can be set to overwrite the global.image.pullSecrets | `{{ global.image.pullSecrets }}` |
 | | `podLabels` |  Can be used to define extra Operate pod labels | `{ }` |
 | | `logging` | Configuration for the Operate logging. This template will be directly included in the Operate configuration yaml file | `level:` <br/> `ROOT: INFO` <br/> `org.camunda.operate: DEBUG` |
 | | `service` | Configuration to configure the Operate service. | |
@@ -245,13 +250,13 @@ Information about Tasklist you can find [here](https://docs.camunda.io/docs/comp
 | | `image` | Configuration to configure the Tasklist image specifics. | |
 | | `image.repository` | Defines which image repository to use. | `camunda/tasklist` |
 | | `image.tag` | Can be set to overwrite the global tag, which should be used in that chart. | `` |
+| | `image.pullSecrets` | Can be set to overwrite the global.image.pullSecrets | `{{ global.image.pullSecrets }}` |
 | | `podLabels` |  Can be used to define extra Tasklist pod labels | `{ }` |
 | | `configMap.defaultMode` | Can be used to set permissions on created files by default. Must be an octal value between 0000 and 0777 or a decimal value between 0 and 511. See [Api docs](https://github.com/kubernetes/api/blob/master/core/v1/types.go#L1615-L1623) for more details. It is useful to configure it if you want to run the helm charts in OpenShift. | [`0744`](https://chmodcommand.com/chmod-744/) |
 | | `command` | Can be used to [override the default command provided by the container image](https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/) | `[]` |
 | | `service` | Configuration to configure the Tasklist service. | |
 | | `service.type` | Defines the [type of the service](https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types) | `ClusterIP` |
 | | `service.port` | Defines the port of the service, where the Tasklist web application will be available | `80` |
-| | `springProfilesActive` | Can be used to set the active spring profiles used by Tasklist | `""` |
 | | `graphqlPlaygroundEnabled` | If true, enables the GraphQl playground | `""` |
 | | `graphqlPlaygroundEnabled` | Can be set to include the credentials in each request, should be set to "include" if GraphQl playground is enabled | `""` |
 | | `podSecurityContext` | Defines the security options the Tasklist container should be run with | `{ }` |
@@ -265,6 +270,7 @@ Information about Tasklist you can find [here](https://docs.camunda.io/docs/comp
 | | `ingress.annotations` | Defines the ingress related annotations, consumed mostly by the ingress controller | `ingress.kubernetes.io/rewrite-target: "/"` <br/> `nginx.ingress.kubernetes.io/ssl-redirect: "false"` |
 | | `ingress.path` | Defines the path which is associated with the Tasklist [service and port](https://kubernetes.io/docs/concepts/services-networking/ingress/#ingress-rules) | `/` |
 | | `ingress.host` | Can be used to define the [host of the ingress rule.](https://kubernetes.io/docs/concepts/services-networking/ingress/#ingress-rules) If not specified the rules applies to all inbound HTTP traffic, if specified the rule applies to that host. | `""` |
+| | `env` | Can be used to set extra environment variables on each Tasklist container | `[ ]` |
 
 ### Optimize
 
@@ -277,6 +283,7 @@ Information about Optimize you can find [here](https://docs.camunda.io/docs/comp
 | | `image` |  Configuration for the Optimize image specifics | |
 | | `image.repository` |  Defines which image repository to use | `camunda/optimize` |
 | | `image.tag` |  Can be set to overwrite the global tag, which should be used in that chart | `3.8.0` |
+| | `image.pullSecrets` | Can be set to overwrite the global.image.pullSecrets | `{{ global.image.pullSecrets }}` |
 | | `podLabels` |  Can be used to define extra Optimize pod labels | `{ }` |
 | | `partitionCount` |  Defines how many Zeebe partitions are set up in the cluster and which should be imported by Optimize | `"3"` |
 | | `env` |  Can be used to set extra environment variables in each Optimize container | `[]` |
@@ -315,6 +322,7 @@ Information about Identity you can find [here](https://docs.camunda.io/docs/self
 | | `image` |  Configuration to configure the Identity image specifics | |
 | | `image.repository` |  Defines which image repository to use | `camunda/identity` |
 | | `image.tag` |   Can be set to overwrite the global.image.tag | |
+| | `image.pullSecrets` | Can be set to overwrite the global.image.pullSecrets | `{{ global.image.pullSecrets }}` |
 | | `service` |  Configuration to configure the Identity service. | |
 | | `service.type` | Defines the [type of the service](https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types) | `ClusterIP` |
 | | `service.port` |  Defines the port of the service, where the Identity web application will be available | `80` |

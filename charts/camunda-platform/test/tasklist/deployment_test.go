@@ -86,6 +86,43 @@ func (s *deploymentTemplateTest) TestContainerSetGlobalAnnotations() {
 	s.Require().Equal("bar", deployment.ObjectMeta.Annotations["foo"])
 }
 
+func (s *deploymentTemplateTest) TestContainerSetImagePullSecretsGlobal() {
+	// given
+	options := &helm.Options{
+		SetValues: map[string]string{
+			"global.image.pullSecrets[0].name": "SecretName",
+		},
+		KubectlOptions: k8s.NewKubectlOptions("", "", s.namespace),
+	}
+
+	// when
+	output := helm.RenderTemplate(s.T(), options, s.chartPath, s.release, s.templates)
+	var deployment appsv1.Deployment
+	helm.UnmarshalK8SYaml(s.T(), output, &deployment)
+
+	// then
+	s.Require().Equal("SecretName", deployment.Spec.Template.Spec.ImagePullSecrets[0].Name)
+}
+
+func (s *deploymentTemplateTest) TestContainerSetImagePullSecretsSubChart() {
+	// given
+	options := &helm.Options{
+		SetValues: map[string]string{
+			"global.image.pullSecrets[0].name":   "SecretName",
+			"tasklist.image.pullSecrets[0].name": "SecretNameSubChart",
+		},
+		KubectlOptions: k8s.NewKubectlOptions("", "", s.namespace),
+	}
+
+	// when
+	output := helm.RenderTemplate(s.T(), options, s.chartPath, s.release, s.templates)
+	var deployment appsv1.Deployment
+	helm.UnmarshalK8SYaml(s.T(), output, &deployment)
+
+	// then
+	s.Require().Equal("SecretNameSubChart", deployment.Spec.Template.Spec.ImagePullSecrets[0].Name)
+}
+
 func (s *deploymentTemplateTest) TestContainerOverwriteImageTag() {
 	// given
 	options := &helm.Options{
@@ -188,6 +225,29 @@ func (s *deploymentTemplateTest) TestContainerSetContainerCommand() {
 	s.Require().Equal(len(containers), 1)
 	s.Require().Equal(1, len(containers[0].Command))
 	s.Require().Equal("printenv", containers[0].Command[0])
+}
+
+func (s *deploymentTemplateTest) TestContainerShouldSetTemplateEnvVars() {
+	// given
+	options := &helm.Options{
+		SetValues: map[string]string{
+			"tasklist.env[0].name":  "RELEASE_NAME",
+			"tasklist.env[0].value": "test-{{ .Release.Name }}",
+			"tasklist.env[1].name":  "OTHER_ENV",
+			"tasklist.env[1].value": "nothingToSeeHere",
+		},
+		KubectlOptions: k8s.NewKubectlOptions("", "", s.namespace),
+	}
+
+	// when
+	output := helm.RenderTemplate(s.T(), options, s.chartPath, s.release, s.templates)
+	var deployment appsv1.Deployment
+	helm.UnmarshalK8SYaml(s.T(), output, &deployment)
+
+	// then
+	env := deployment.Spec.Template.Spec.Containers[0].Env
+	s.Require().Contains(env, v12.EnvVar{Name: "RELEASE_NAME", Value: "test-camunda-platform-test"})
+	s.Require().Contains(env, v12.EnvVar{Name: "OTHER_ENV", Value: "nothingToSeeHere"})
 }
 
 // https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector
@@ -339,11 +399,40 @@ func (s *deploymentTemplateTest) TestContainerShouldDisableOperateIntegration() 
 	s.Require().Contains(env, v12.EnvVar{Name: "SPRING_PROFILES_ACTIVE", Value: "auth"})
 }
 
-func (s *deploymentTemplateTest) TestContainerShouldSetOperateIdentitySecret() {
+func (s *deploymentTemplateTest) TestContainerShouldSetOperateIdentitySecretValue() {
 	// given
 	options := &helm.Options{
 		SetValues: map[string]string{
-			"global.identity.auth.tasklist.existingSecret": "ownExistingSecret",
+			"global.identity.auth.tasklist.existingSecret": "secretValue",
+		},
+		KubectlOptions: k8s.NewKubectlOptions("", "", s.namespace),
+		ExtraArgs:      map[string][]string{"template": {"--debug"}, "install": {"--debug"}},
+	}
+
+	// when
+	output := helm.RenderTemplate(s.T(), options, s.chartPath, s.release, s.templates)
+	var deployment appsv1.Deployment
+	helm.UnmarshalK8SYaml(s.T(), output, &deployment)
+
+	// then
+	env := deployment.Spec.Template.Spec.Containers[0].Env
+	s.Require().Contains(env,
+		v12.EnvVar{
+			Name: "CAMUNDA_TASKLIST_IDENTITY_CLIENT_SECRET",
+			ValueFrom: &v12.EnvVarSource{
+				SecretKeyRef: &v12.SecretKeySelector{
+					LocalObjectReference: v12.LocalObjectReference{Name: "camunda-platform-test-tasklist-identity-secret"},
+					Key:                  "tasklist-secret",
+				},
+			},
+		})
+}
+
+func (s *deploymentTemplateTest) TestContainerShouldSetOperateIdentitySecretViaReference() {
+	// given
+	options := &helm.Options{
+		SetValues: map[string]string{
+			"global.identity.auth.tasklist.existingSecret.name": "ownExistingSecret",
 		},
 		KubectlOptions: k8s.NewKubectlOptions("", "", s.namespace),
 		ExtraArgs:      map[string][]string{"template": {"--debug"}, "install": {"--debug"}},

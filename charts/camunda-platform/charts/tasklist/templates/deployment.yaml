@@ -17,6 +17,8 @@ spec:
         {{- toYaml .Values.podLabels | nindent 8 }}
         {{- end }}
     spec:
+      imagePullSecrets:
+        {{- include "camundaPlatform.imagePullSecrets" . | nindent 8 }}
       containers:
       - name: {{ .Chart.Name }}
         {{- if .Values.image.tag }}
@@ -35,7 +37,7 @@ spec:
           - name: CAMUNDA_TASKLIST_IDENTITY_CLIENT_ID
             value: "tasklist"
           - name: CAMUNDA_TASKLIST_IDENTITY_CLIENT_SECRET
-            {{- if .Values.global.identity.auth.tasklist.existingSecret }}
+            {{- if and .Values.global.identity.auth.tasklist.existingSecret (not (typeIs "string" .Values.global.identity.auth.tasklist.existingSecret)) }}
             valueFrom:
               secretKeyRef:
                 {{- /*
@@ -61,6 +63,9 @@ spec:
             value: {{ default "true" .Values.graphqlPlaygroundEnabled | quote }}
           - name: GRAPHQL_PLAYGROUND_SETTINGS_REQUEST_CREDENTIALS
             value: {{ default "include" .Values.graphqlPlaygroundRequestCredentials | quote }}
+          {{- with .Values.env }}
+            {{- tpl (toYaml .) $ | nindent 10 }}
+          {{- end }}
         {{- if .Values.command}}
         command: {{ .Values.command }}
         {{- end }}

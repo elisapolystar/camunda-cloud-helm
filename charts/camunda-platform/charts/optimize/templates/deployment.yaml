@@ -17,6 +17,8 @@ spec:
         {{- toYaml .Values.podLabels | nindent 8 }}
         {{- end }}
     spec:
+      imagePullSecrets:
+        {{- include "camundaPlatform.imagePullSecrets" . | nindent 8 }}
       containers:
       - name: {{ .Chart.Name }}
         {{- if .Values.image.tag }}
@@ -42,7 +44,7 @@ spec:
           - name: CAMUNDA_OPTIMIZE_IDENTITY_CLIENTID
             value: "optimize"
           - name: CAMUNDA_OPTIMIZE_IDENTITY_CLIENTSECRET
-            {{- if .Values.global.identity.auth.optimize.existingSecret }}
+            {{- if and .Values.global.identity.auth.optimize.existingSecret (not (typeIs "string" .Values.global.identity.auth.optimize.existingSecret)) }}
             valueFrom:
               secretKeyRef:
                 {{- /*
