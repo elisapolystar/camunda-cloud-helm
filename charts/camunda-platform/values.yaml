@@ -190,10 +190,10 @@ zeebe:
   resources:
     requests:
       cpu: 860m
-      memory: 1500Mi
+      memory: 1900Mi
     limits:
       cpu: 1060m
-      memory: 2200Mi
+      memory: 2600Mi
 
   # PersistenceType defines the type of persistence which is used by Zeebe. Possible values are: disk, local and memory.
   #   disk  - means a persistence volume claim is configured and used
