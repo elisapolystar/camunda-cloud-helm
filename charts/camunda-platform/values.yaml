@@ -43,7 +43,7 @@ global:
   # Elasticsearch configuration which is shared between the sub charts  
   elasticsearch:
     # Elasticsearch.disableExporter if true, disables the elastic exporter in zeebe
-    disableExporter: false
+    disableExporter: true
     # Elasticsearch.url can be used to configure the URL to access elasticsearch, if not set services fallback to host and port configuration
     url:
     # Elasticsearch.host defines the elasticsearch host, ideally the service name inside the namespace
