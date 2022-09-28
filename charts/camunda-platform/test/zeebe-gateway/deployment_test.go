@@ -262,7 +262,7 @@ func (s *deploymentTemplateTest) TestContainerSetContainerCommand() {
 
 	// then
 	containers := deployment.Spec.Template.Spec.Containers
-	s.Require().Equal(len(containers), 1)
+	s.Require().Equal(1, len(containers))
 	s.Require().Equal(1, len(containers[0].Command))
 	s.Require().Equal("printenv", containers[0].Command[0])
 }
@@ -307,7 +307,7 @@ func (s *deploymentTemplateTest) TestContainerSetExtraVolumes() {
 
 	// then
 	volumes := deployment.Spec.Template.Spec.Volumes
-	s.Require().Equal(len(volumes), 2)
+	s.Require().Equal(2, len(volumes))
 
 	extraVolume := volumes[1]
 	s.Require().Equal("extraVolume", extraVolume.Name)
@@ -333,7 +333,7 @@ func (s *deploymentTemplateTest) TestContainerSetExtraVolumeMounts() {
 
 	// then
 	volumeMounts := deployment.Spec.Template.Spec.Containers[0].VolumeMounts
-	s.Require().Equal(len(volumeMounts), 1)
+	s.Require().Equal(1, len(volumeMounts))
 	extraVolumeMount := volumeMounts[0]
 	s.Require().Equal("otherConfigMap", extraVolumeMount.Name)
 	s.Require().Equal("/usr/local/config", extraVolumeMount.MountPath)
@@ -359,7 +359,7 @@ func (s *deploymentTemplateTest) TestContainerSetExtraVolumesAndMounts() {
 
 	// then
 	volumes := deployment.Spec.Template.Spec.Volumes
-	s.Require().Equal(len(volumes), 2)
+	s.Require().Equal(2, len(volumes))
 
 	extraVolume := volumes[1]
 	s.Require().Equal("extraVolume", extraVolume.Name)
@@ -368,10 +368,29 @@ func (s *deploymentTemplateTest) TestContainerSetExtraVolumesAndMounts() {
 	s.Require().EqualValues(744, *extraVolume.ConfigMap.DefaultMode)
 
 	volumeMounts := deployment.Spec.Template.Spec.Containers[0].VolumeMounts
-	s.Require().Equal(len(volumeMounts), 1)
+	s.Require().Equal(1, len(volumeMounts))
 	extraVolumeMount := volumeMounts[0]
 	s.Require().Equal("otherConfigMap", extraVolumeMount.Name)
 	s.Require().Equal("/usr/local/config", extraVolumeMount.MountPath)
+}
+
+func (s *deploymentTemplateTest) TestPodSetSecurityContext() {
+	// given
+	options := &helm.Options{
+		SetValues: map[string]string{
+			"zeebe-gateway.podSecurityContext.runAsUser": "1000",
+		},
+		KubectlOptions: k8s.NewKubectlOptions("", "", s.namespace),
+	}
+
+	// when
+	output := helm.RenderTemplate(s.T(), options, s.chartPath, s.release, s.templates)
+	var deployment appsv1.Deployment
+	helm.UnmarshalK8SYaml(s.T(), output, &deployment)
+
+	// then
+	securityContext := deployment.Spec.Template.Spec.SecurityContext
+	s.Require().EqualValues(1000, *securityContext.RunAsUser)
 }
 
 func (s *deploymentTemplateTest) TestContainerSetSecurityContext() {
@@ -557,4 +576,26 @@ func (s *deploymentTemplateTest) TestContainerSetExtraInitContainers() {
 	s.Require().Equal("init-container-camunda-platform-test", initContainer.Name)
 	s.Require().Equal("busybox:1.28", initContainer.Image)
 	s.Require().Equal([]string{"sh", "-c", "top"}, initContainer.Command)
+}
+
+func (s *deploymentTemplateTest) TestContainerShouldOverwriteGlobalImagePullPolicy() {
+	// given
+	options := &helm.Options{
+		SetValues: map[string]string{
+			"global.image.pullPolicy": "Always",
+		},
+		KubectlOptions: k8s.NewKubectlOptions("", "", s.namespace),
+	}
+
+	// when
+	output := helm.RenderTemplate(s.T(), options, s.chartPath, s.release, s.templates)
+	var deployment appsv1.Deployment
+	helm.UnmarshalK8SYaml(s.T(), output, &deployment)
+
+	// then
+	expectedPullPolicy := v12.PullAlways
+	containers := deployment.Spec.Template.Spec.Containers
+	s.Require().Equal(1, len(containers))
+	pullPolicy := containers[0].ImagePullPolicy
+	s.Require().Equal(expectedPullPolicy, pullPolicy)
 }

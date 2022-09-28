@@ -8,10 +8,15 @@ releaseName=camunda-platform-test
 test:	deps
 	go test ./...
 
-# it: runs the integration tests agains the current kube context
+# it: runs the integration tests against the current kube context
 .PHONY: it
 it:	deps
 	go test -p 1 -timeout 1h -tags integration ./.../integration
+
+# it-os: runs a subset of the integration tests against the current Openshift cluster
+.PHONY: it-os
+it-os: deps
+	go test -p 1 -timeout 1h -tags integration,openshift ./.../integration
 
 # golden: runs the tests with updating the golden files
 .PHONY: golden
@@ -57,7 +62,7 @@ install:	deps
 uninstall:
 	-helm uninstall $(releaseName)
 	-kubectl delete pvc -l app.kubernetes.io/instance=$(releaseName)
-	-kubectl delete pvc -l app=elasticsearch-master
+	-kubectl delete pvc -l release=$(releaseName)
 
 # dry-run: runs an install dry-run with the local chart
 .PHONY: dry-run
@@ -76,3 +81,18 @@ template:	deps
 .PHONY: topology
 topology:
 	kubectl exec svc/$(releaseName)-zeebe-gateway -- zbctl --insecure status
+
+#########################################################
+######### Release
+#########################################################
+
+.PHONY: .bump-chart-version
+.bump-chart-version:
+	@bash scripts/bump-chart-version.sh
+
+.PHONY: bump-chart-version-and-commit
+bump-chart-version-and-commit: .bump-chart-version
+	chart_path="charts/camunda-platform";\
+	chart_version=`grep -Po '(?<=^version: ).+' $${chart_path}/Chart.yaml`;\
+	git add $${chart_path};\
+	git commit -m "chore: bump camunda-platform chart version to $${chart_version}"

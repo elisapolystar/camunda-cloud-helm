@@ -25,6 +25,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	appsv1 "k8s.io/api/apps/v1"
+	v1 "k8s.io/api/apps/v1"
 	v12 "k8s.io/api/core/v1"
 )
 
@@ -66,6 +67,26 @@ func (s *deploymentTemplateTest) TestContainerSetPodLabels() {
 
 	// then
 	s.Require().Equal("bar", deployment.Spec.Template.Labels["foo"])
+}
+
+func (s *deploymentTemplateTest) TestContainerSetPodAnnotations() {
+	// given
+	options := &helm.Options{
+		SetValues: map[string]string{
+			"tasklist.podAnnotations.foo": "bar",
+			"tasklist.podAnnotations.foz": "baz",
+		},
+		KubectlOptions: k8s.NewKubectlOptions("", "", s.namespace),
+	}
+
+	// when
+	output := helm.RenderTemplate(s.T(), options, s.chartPath, s.release, s.templates)
+	var deployment appsv1.Deployment
+	helm.UnmarshalK8SYaml(s.T(), output, &deployment)
+
+	// then
+	s.Require().Equal("bar", deployment.Spec.Template.Annotations["foo"])
+	s.Require().Equal("baz", deployment.Spec.Template.Annotations["foz"])
 }
 
 func (s *deploymentTemplateTest) TestContainerSetGlobalAnnotations() {
@@ -187,7 +208,7 @@ func (s *deploymentTemplateTest) TestContainerOverwriteImageTagWithChartDirectSe
 	s.Require().Equal(expectedContainerImage, containers[0].Image)
 }
 
-func (s *deploymentTemplateTest) TestContainerSetSecurityContext() {
+func (s *deploymentTemplateTest) TestPodSetSecurityContext() {
 	// given
 	options := &helm.Options{
 		SetValues: map[string]string{
@@ -206,6 +227,27 @@ func (s *deploymentTemplateTest) TestContainerSetSecurityContext() {
 	s.Require().EqualValues(1000, *securityContext.RunAsUser)
 }
 
+func (s *deploymentTemplateTest) TestContainerSetSecurityContext() {
+	// given
+	options := &helm.Options{
+		SetValues: map[string]string{
+			"tasklist.containerSecurityContext.privileged":          "true",
+			"tasklist.containerSecurityContext.capabilities.add[0]": "NET_ADMIN",
+		},
+		KubectlOptions: k8s.NewKubectlOptions("", "", s.namespace),
+	}
+
+	// when
+	output := helm.RenderTemplate(s.T(), options, s.chartPath, s.release, s.templates)
+	var deployment appsv1.Deployment
+	helm.UnmarshalK8SYaml(s.T(), output, &deployment)
+
+	// then
+	securityContext := deployment.Spec.Template.Spec.Containers[0].SecurityContext
+	s.Require().True(*securityContext.Privileged)
+	s.Require().EqualValues("NET_ADMIN", securityContext.Capabilities.Add[0])
+}
+
 func (s *deploymentTemplateTest) TestContainerSetContainerCommand() {
 	// given
 	options := &helm.Options{
@@ -222,9 +264,103 @@ func (s *deploymentTemplateTest) TestContainerSetContainerCommand() {
 
 	// then
 	containers := deployment.Spec.Template.Spec.Containers
-	s.Require().Equal(len(containers), 1)
+	s.Require().Equal(1, len(containers))
 	s.Require().Equal(1, len(containers[0].Command))
 	s.Require().Equal("printenv", containers[0].Command[0])
+}
+
+func (s *deploymentTemplateTest) TestContainerSetExtraVolumes() {
+	// given
+	options := &helm.Options{
+		SetValues: map[string]string{
+			"tasklist.extraVolumes[0].name":                  "extraVolume",
+			"tasklist.extraVolumes[0].configMap.name":        "otherConfigMap",
+			"tasklist.extraVolumes[0].configMap.defaultMode": "744",
+		},
+		KubectlOptions: k8s.NewKubectlOptions("", "", s.namespace),
+		ExtraArgs:      map[string][]string{"template": {"--debug"}, "install": {"--debug"}},
+	}
+
+	// when
+	output := helm.RenderTemplate(s.T(), options, s.chartPath, s.release, s.templates)
+	var deployment appsv1.Deployment
+	helm.UnmarshalK8SYaml(s.T(), output, &deployment)
+
+	// then
+	volumes := deployment.Spec.Template.Spec.Volumes
+	s.Require().Equal(2, len(volumes))
+
+	extraVolume := volumes[1]
+	s.Require().Equal("extraVolume", extraVolume.Name)
+	s.Require().NotNil(*extraVolume.ConfigMap)
+	s.Require().Equal("otherConfigMap", extraVolume.ConfigMap.Name)
+	s.Require().EqualValues(744, *extraVolume.ConfigMap.DefaultMode)
+}
+
+func (s *deploymentTemplateTest) TestContainerSetExtraVolumeMounts() {
+	// given
+	options := &helm.Options{
+		SetValues: map[string]string{
+			"tasklist.extraVolumeMounts[0].name":      "otherConfigMap",
+			"tasklist.extraVolumeMounts[0].mountPath": "/usr/local/config",
+		},
+		KubectlOptions: k8s.NewKubectlOptions("", "", s.namespace),
+		ExtraArgs:      map[string][]string{"template": {"--debug"}, "install": {"--debug"}},
+	}
+
+	// when
+	output := helm.RenderTemplate(s.T(), options, s.chartPath, s.release, s.templates)
+	var deployment appsv1.Deployment
+	helm.UnmarshalK8SYaml(s.T(), output, &deployment)
+
+	// then
+	containers := deployment.Spec.Template.Spec.Containers
+	s.Require().Equal(1, len(containers))
+
+	volumeMounts := deployment.Spec.Template.Spec.Containers[0].VolumeMounts
+	s.Require().Equal(2, len(volumeMounts))
+	extraVolumeMount := volumeMounts[1]
+	s.Require().Equal("otherConfigMap", extraVolumeMount.Name)
+	s.Require().Equal("/usr/local/config", extraVolumeMount.MountPath)
+}
+
+func (s *deploymentTemplateTest) TestContainerSetExtraVolumesAndMounts() {
+	// given
+	options := &helm.Options{
+		SetValues: map[string]string{
+			"tasklist.extraVolumeMounts[0].name":             "otherConfigMap",
+			"tasklist.extraVolumeMounts[0].mountPath":        "/usr/local/config",
+			"tasklist.extraVolumes[0].name":                  "extraVolume",
+			"tasklist.extraVolumes[0].configMap.name":        "otherConfigMap",
+			"tasklist.extraVolumes[0].configMap.defaultMode": "744",
+		},
+		KubectlOptions: k8s.NewKubectlOptions("", "", s.namespace),
+		ExtraArgs:      map[string][]string{"template": {"--debug"}, "install": {"--debug"}},
+	}
+
+	// when
+	output := helm.RenderTemplate(s.T(), options, s.chartPath, s.release, s.templates)
+	var deployment appsv1.Deployment
+	helm.UnmarshalK8SYaml(s.T(), output, &deployment)
+
+	// then
+	volumes := deployment.Spec.Template.Spec.Volumes
+	s.Require().Equal(2, len(volumes))
+
+	extraVolume := volumes[1]
+	s.Require().Equal("extraVolume", extraVolume.Name)
+	s.Require().NotNil(*extraVolume.ConfigMap)
+	s.Require().Equal("otherConfigMap", extraVolume.ConfigMap.Name)
+	s.Require().EqualValues(744, *extraVolume.ConfigMap.DefaultMode)
+
+	containers := deployment.Spec.Template.Spec.Containers
+	s.Require().Equal(1, len(containers))
+
+	volumeMounts := deployment.Spec.Template.Spec.Containers[0].VolumeMounts
+	s.Require().Equal(2, len(volumeMounts))
+	extraVolumeMount := volumeMounts[1]
+	s.Require().Equal("otherConfigMap", extraVolumeMount.Name)
+	s.Require().Equal("/usr/local/config", extraVolumeMount.MountPath)
 }
 
 func (s *deploymentTemplateTest) TestContainerShouldSetTemplateEnvVars() {
@@ -455,4 +591,76 @@ func (s *deploymentTemplateTest) TestContainerShouldSetOperateIdentitySecretViaR
 				},
 			},
 		})
+}
+
+func (s *deploymentTemplateTest) TestContainerShouldSetTheRightKeycloakServiceUrl() {
+	// given
+
+	options := &helm.Options{
+		SetValues: map[string]string{
+			"global.identity.keycloak.fullname": "keycloak",
+		},
+		KubectlOptions: k8s.NewKubectlOptions("", "", s.namespace),
+		ExtraArgs:      map[string][]string{"template": {"--debug"}, "install": {"--debug"}},
+	}
+
+	// when
+	output := helm.RenderTemplate(s.T(), options, s.chartPath, s.release, s.templates)
+	var deployment appsv1.Deployment
+	helm.UnmarshalK8SYaml(s.T(), output, &deployment)
+
+	// then
+	env := deployment.Spec.Template.Spec.Containers[0].Env
+	s.Require().Contains(env,
+		v12.EnvVar{
+			Name:  "CAMUNDA_TASKLIST_IDENTITY_ISSUER_BACKEND_URL",
+			Value: "http://keycloak:80/auth/realms/camunda-platform",
+		})
+}
+
+func (s *deploymentTemplateTest) TestContainerShouldOverwriteGlobalImagePullPolicy() {
+	// given
+	options := &helm.Options{
+		SetValues: map[string]string{
+			"global.image.pullPolicy": "Always",
+		},
+		KubectlOptions: k8s.NewKubectlOptions("", "", s.namespace),
+	}
+
+	// when
+	output := helm.RenderTemplate(s.T(), options, s.chartPath, s.release, s.templates)
+	var deployment v1.Deployment
+	helm.UnmarshalK8SYaml(s.T(), output, &deployment)
+
+	// then
+	expectedPullPolicy := v12.PullAlways
+	containers := deployment.Spec.Template.Spec.Containers
+	s.Require().Equal(1, len(containers))
+	pullPolicy := containers[0].ImagePullPolicy
+	s.Require().Equal(expectedPullPolicy, pullPolicy)
+}
+
+func (s *deploymentTemplateTest) TestContainerShouldAddContextPath() {
+	// given
+	options := &helm.Options{
+		SetValues: map[string]string{
+			"tasklist.contextPath": "/tasklist",
+		},
+		KubectlOptions: k8s.NewKubectlOptions("", "", s.namespace),
+		ExtraArgs:      map[string][]string{"template": {"--debug"}, "install": {"--debug"}},
+	}
+
+	// when
+	output := helm.RenderTemplate(s.T(), options, s.chartPath, s.release, s.templates)
+	var deployment appsv1.Deployment
+	helm.UnmarshalK8SYaml(s.T(), output, &deployment)
+
+	// then
+	env := deployment.Spec.Template.Spec.Containers[0].Env
+	s.Require().Contains(env,
+		v12.EnvVar{
+			Name:  "SERVER_SERVLET_CONTEXT_PATH",
+			Value: "/tasklist",
+		},
+	)
 }
