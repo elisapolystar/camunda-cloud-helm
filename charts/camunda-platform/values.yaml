@@ -433,7 +433,7 @@ zeebe-gateway:
 # Operate configuration for the Operate sub chart.
 operate:
   # Enabled if true, the operate deployment and its related resources are deployed via a helm release
-  enabled: true
+  enabled: false
 
   # Image configuration to configure the Operate image specifics
   image:
