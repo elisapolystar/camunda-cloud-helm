@@ -326,7 +326,7 @@ func (s *statefulSetTest) TestContainerSetContainerCommand() {
 
 	// then
 	containers := statefulSet.Spec.Template.Spec.Containers
-	s.Require().Equal(len(containers), 1)
+	s.Require().Equal(1, len(containers))
 	s.Require().Equal(1, len(containers[0].Command))
 	s.Require().Equal("printenv", containers[0].Command[0])
 }
@@ -372,7 +372,7 @@ func (s *statefulSetTest) TestContainerSetExtraVolumes() {
 
 	// then
 	volumes := statefulSet.Spec.Template.Spec.Volumes
-	s.Require().Equal(len(volumes), 3)
+	s.Require().Equal(3, len(volumes))
 
 	extraVolume := volumes[2]
 	s.Require().Equal("extraVolume", extraVolume.Name)
@@ -399,7 +399,7 @@ func (s *statefulSetTest) TestContainerSetExtraVolumeMounts() {
 
 	// then
 	volumeMounts := statefulSet.Spec.Template.Spec.Containers[0].VolumeMounts
-	s.Require().Equal(len(volumeMounts), 4)
+	s.Require().Equal(4, len(volumeMounts))
 	extraVolumeMount := volumeMounts[3]
 	s.Require().Equal("otherConfigMap", extraVolumeMount.Name)
 	s.Require().Equal("/usr/local/config", extraVolumeMount.MountPath)
@@ -425,7 +425,7 @@ func (s *statefulSetTest) TestContainerSetExtraVolumesAndMounts() {
 
 	// then
 	volumes := statefulSet.Spec.Template.Spec.Volumes
-	s.Require().Equal(len(volumes), 3)
+	s.Require().Equal(3, len(volumes))
 
 	extraVolume := volumes[2]
 	s.Require().Equal("extraVolume", extraVolume.Name)
@@ -434,10 +434,29 @@ func (s *statefulSetTest) TestContainerSetExtraVolumesAndMounts() {
 	s.Require().EqualValues(744, *extraVolume.ConfigMap.DefaultMode)
 
 	volumeMounts := statefulSet.Spec.Template.Spec.Containers[0].VolumeMounts
-	s.Require().Equal(len(volumeMounts), 4)
+	s.Require().Equal(4, len(volumeMounts))
 	extraVolumeMount := volumeMounts[3]
 	s.Require().Equal("otherConfigMap", extraVolumeMount.Name)
 	s.Require().Equal("/usr/local/config", extraVolumeMount.MountPath)
+}
+
+func (s *statefulSetTest) TestPodSetSecurityContext() {
+	// given
+	options := &helm.Options{
+		SetValues: map[string]string{
+			"zeebe.podSecurityContext.runAsUser": "1000",
+		},
+		KubectlOptions: k8s.NewKubectlOptions("", "", s.namespace),
+	}
+
+	// when
+	output := helm.RenderTemplate(s.T(), options, s.chartPath, s.release, s.templates)
+	var statefulSet v1.StatefulSet
+	helm.UnmarshalK8SYaml(s.T(), output, &statefulSet)
+
+	// then
+	securityContext := statefulSet.Spec.Template.Spec.SecurityContext
+	s.Require().EqualValues(1000, *securityContext.RunAsUser)
 }
 
 func (s *statefulSetTest) TestContainerSetSecurityContext() {
@@ -661,4 +680,26 @@ func (s *statefulSetTest) TestContainerSetPersistenceTypeLocal() {
 	}
 
 	s.Require().Equal(0, len(statefulSet.Spec.VolumeClaimTemplates))
+}
+
+func (s *statefulSetTest) TestContainerShouldOverwriteGlobalImagePullPolicy() {
+	// given
+	options := &helm.Options{
+		SetValues: map[string]string{
+			"global.image.pullPolicy": "Always",
+		},
+		KubectlOptions: k8s.NewKubectlOptions("", "", s.namespace),
+	}
+
+	// when
+	output := helm.RenderTemplate(s.T(), options, s.chartPath, s.release, s.templates)
+	var statefulSet v1.StatefulSet
+	helm.UnmarshalK8SYaml(s.T(), output, &statefulSet)
+
+	// then
+	expectedPullPolicy := v12.PullAlways
+	containers := statefulSet.Spec.Template.Spec.Containers
+	s.Require().Equal(1, len(containers))
+	pullPolicy := containers[0].ImagePullPolicy
+	s.Require().Equal(expectedPullPolicy, pullPolicy)
 }

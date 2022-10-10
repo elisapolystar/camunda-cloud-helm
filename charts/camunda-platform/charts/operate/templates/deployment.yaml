@@ -15,6 +15,10 @@ spec:
         {{- if .Values.podLabels }}
         {{- toYaml .Values.podLabels | nindent 8 }}
         {{- end }}
+      {{- if .Values.podAnnotations }}
+      annotations:
+        {{- toYaml  .Values.podAnnotations | nindent 8 }}
+      {{- end }}
     spec:
       imagePullSecrets:
         {{- include "camundaPlatform.imagePullSecrets" . | nindent 8 }}
@@ -25,14 +29,26 @@ spec:
         {{- else }}
         image: "{{ .Values.image.repository }}:{{ .Values.global.image.tag }}"
         {{- end }}
+        imagePullPolicy: {{ .Values.global.image.pullPolicy }}
+        {{- if .Values.containerSecurityContext }}
+        securityContext: {{- toYaml .Values.containerSecurityContext | nindent 10 }}
+        {{- end }}
         env:
+          {{- if .Values.contextPath }}
+          - name: SERVER_SERVLET_CONTEXT_PATH
+            value: {{ .Values.contextPath | quote }}
+          {{- end }}
           {{- if .Values.global.identity.auth.enabled }}
           - name: SPRING_PROFILES_ACTIVE
             value: "identity-auth"
+          - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUERURI
+            value: {{ include "camundaPlatform.issuerBackendUrl" . | quote }}
+          - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWKSETURI
+            value: {{ printf "%s%s" (include "camundaPlatform.issuerBackendUrl" .) "/protocol/openid-connect/certs" | quote }}
           - name: CAMUNDA_OPERATE_IDENTITY_ISSUER_URL
             value: {{ .Values.global.identity.auth.publicIssuerUrl | quote }}
           - name: CAMUNDA_OPERATE_IDENTITY_ISSUER_BACKEND_URL
-            value: "http://{{ include "common.names.dependency.fullname" (dict "chartName" "keycloak" "chartValues" . "context" $) | trunc 20 | trimSuffix "-" }}:80/auth/realms/camunda-platform"
+            value: {{ include "camundaPlatform.issuerBackendUrl" . | quote }}
           - name: CAMUNDA_OPERATE_IDENTITY_CLIENT_ID
             value: "operate"
           - name: CAMUNDA_OPERATE_IDENTITY_CLIENT_SECRET
@@ -94,8 +110,7 @@ spec:
       serviceAccountName: {{ .Values.serviceAccount.name }}
       {{- end }}
       {{- if .Values.podSecurityContext }}
-      securityContext:
-        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      securityContext: {{- toYaml .Values.podSecurityContext | nindent 8 }}
       {{- end }}
 {{- with .Values.nodeSelector }}
       nodeSelector:
