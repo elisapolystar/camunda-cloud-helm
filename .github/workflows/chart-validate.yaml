@@ -1,14 +1,16 @@
-name: Chart Testing
+name: "Chart - Validate"
 
 on:
   # Allow to run the workflow from GitHub UI and other workflows.
   workflow_dispatch:
-  push:
-    branches:
-      - main
+  pull_request:
+    paths:
+      - '.github/**'
+      - '.tool-versions'
+      - 'charts/**'
 
 jobs:
-  release:
+  lint-and-test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -23,16 +25,21 @@ jobs:
         uses: asdf-vm/actions/install@v1
       - name: Add helm repos
         run: |
-          helm repo add elastic https://helm.elastic.co
-          helm repo add bitnami https://charts.bitnami.com/bitnami
-          helm repo update
-      - name: Get Helm Deps
+          make helm.repos-add
+      - name: Get Helm dependency
         run: |
-          make deps
+          make helm.dependency-update
+      - name: Run Helm lint 
+        run: |
+          helm lint --strict charts/*
       - uses: actions/setup-python@v2
         with:
           python-version: 3.7
       - name: Set up chart-testing
-        uses: helm/chart-testing-action@v2.2.0
+        uses: helm/chart-testing-action@v2.3.1
+      - name: Don't check version increment if there is no release label
+        if: ${{ ! contains(github.event.*.labels.*.name, 'release') }}
+        run: |
+          echo "check-version-increment: false" >> .github/config/chart-testing.yaml
       - name: Run chart testing and lint
         run: ct lint --config .github/config/chart-testing.yaml

@@ -4,24 +4,35 @@
 [![Go CI](https://github.com/camunda/camunda-platform-helm/actions/workflows/go.yml/badge.svg)](https://github.com/camunda/camunda-platform-helm/actions/workflows/go.yml)
 [![Camunda Platform 8](https://img.shields.io/badge/dynamic/yaml?label=Camunda%20Platform&query=version&url=https%3A%2F%2Fraw.githubusercontent.com%2Fcamunda%2Fcamunda-platform-helm%2Fmain%2Fcharts%2Fcamunda-platform%2FChart.yaml?style=plastic&logo=artifacthub&logoColor=white&labelColor=417598&color=2D4857)](https://artifacthub.io/packages/helm/camunda/camunda-platform)
 
-- [Camunda Platform 8 Helm Chart](#camunda-platform-8-helm-chart)
-  - [Requirements](#requirements)
-  - [Installing](#installing)
-  - [Configuration](#configuration)
-    - [Global](#global)
-    - [Camunda Platform](#camunda-platform)
-    - [Zeebe](#zeebe)
-    - [Zeebe Gateway](#zeebe-gateway)
-    - [Operate](#operate)
-    - [Tasklist](#tasklist)
-    - [Optimize](#optimize)
-    - [Identity](#identity)
-    - [Elasticsearch](#elasticsearch)
+- [Architecture](#architecture)
+- [Requirements](#requirements)
+- [Dependencies](#dependencies)
+- [Installation](#installation)
+- [Configuration](#configuration)
+  - [Global](#global)
+  - [Camunda Platform](#camunda-platform)
+  - [Zeebe](#zeebe)
+  - [Zeebe Gateway](#zeebe-gateway)
+  - [Operate](#operate)
+  - [Tasklist](#tasklist)
+  - [Optimize](#optimize)
+  - [Identity](#identity)
+  - [Elasticsearch](#elasticsearch)
+  - [Keycloak](#keycloak)
+- [Guides](#guides)
   - [Adding dynamic exporters to Zeebe Brokers](#adding-dynamic-exporters-to-zeebe-brokers)
-  - [Development](#development)
-  - [Releasing the Charts](#releasing-the-charts)
+- [Development](#development)
+- [Releasing the Charts](#releasing-the-charts)
 
-<small><i><a href='http://ecotrust-canada.github.io/markdown-toc/'>Table of contents generated with markdown-toc</a></i></small>
+## Architecture
+
+<p align="center">
+  <img
+    alt="Camunda Platform 8 Self-Managed Helm charts architecture diagram"
+    src="../../imgs/camunda-platform-8-self-managed-architecture-diagram-combined-ingress.png"
+    width="80%"
+  />
+</p>
 
 ## Requirements
 
@@ -31,7 +42,43 @@
   * Three Kubernetes nodes to respect the default "hard" affinity settings
   * 2GB of RAM for the JVM heap
 
-## Installing
+## Dependencies
+
+Camunda Platform 8 Helm chart is an umbrella chart for different components. Some of them are internal (sub-charts)
+and some are external (third-party). The dependency management is fully automated and managed by Helm itself,
+however, it's good to understand the dependency structure. This third-party dependency is reflected in the Helm chart
+as follows:
+
+```
+camunda-platform
+  |_ elasticsearch
+  |_ identity
+    |_ keycloak
+      |_ postgresql
+  |_ optimize
+  |_ operate
+  |_ tasklist
+  |_ zeebe
+```
+
+For example, Camunda Identity utilizes Keycloak and allows you to manage users, roles, and permissions
+for Camunda Platform 8 components.
+
+- Keycloak is a dependency for Camunda Identity and PostgreSQL is a dependency for Keycloak.
+- Elasticsearch is a dependency for the Camunda Platform chart which is used in Zeebe, Operate, Tasklist, and Optimize.
+
+The values for the dependencies Keycloak and PostgreSQL can be set in the same hierarchy:
+
+```yaml
+identity:
+  [identity values]
+  keycloak:
+    [keycloak values]
+    postgresql:
+      [postgresql values]
+```
+
+## Installation
 
 The first command adds the official Camunda Platform Helm charts repo and the second installs the Camunda Platform chart to your current Kubernetes context.
 
@@ -83,6 +130,15 @@ Check out the default [values.yaml](values.yaml) file, which contains the same c
 | | `identity.auth.optimize.existingSecret` |  Can be used to reference an existing secret. If not set, a random secret is generated. The existing secret should contain an `optimize-secret` field, which will be used as secret for the Identity-Optimize communication. | ` ` |
 | | `identity.auth.optimize.redirectUrl` |  Defines the redirect URL, which is used by Keycloak to access Optimize. Should be public accessible, the default value works if port-forward to Optimize is created to 8083. Can be overwritten if, an Ingress is in use and an external IP is available. | `"http://localhost:8083"` |
 | | `identity.keycloak.fullname` |    Can be used to change the referenced Keycloak service name inside the sub-charts, like operate, optimize, etc. Subcharts can't access values from other sub-charts or the parent, global only. This is useful if the `identity.keycloak.fullnameOverride` is set, and specifies a different name for the Keycloak service | `""` |
+| | `identity.keycloak.url` |    Can be used to customize the Identity Keycloak chart URL when "identity.keycloak.enabled: true", or to use already existing Keycloak instead of the one comes with Camunda Platform Helm chart when "identity.keycloak.enabled: false" | `{}` |
+| | `identity.keycloak.url.protocol` |    Can be used to set existing Keycloak URL protocol | `` |
+| | `identity.keycloak.url.host` |    Can be used to set existing Keycloak URL host | `` |
+| | `identity.keycloak.url.port` |    Can be used to set existing Keycloak URL port | `` |
+| | `identity.keycloak.contextPath` |   Defines the endpoint of Keycloak which varies between Keycloak versions. In Keycloak v16.x.x it's hard-coded as '/auth', but in v19.x.x it's '/' | `"/auth"` |
+| | `identity.keycloak.auth` |   Can be used incorporate with "global.identity.keycloak.url" and "identity.keycloak.enabled: false" set existing Keycloak URL instead of the one comes with Camunda Platform Helm chart | `{}` |
+| | `identity.keycloak.auth.adminUser` |    Can be used to configure admin user to access existing Keycloak | `""` |
+| | `identity.keycloak.auth.existingSecret` |    Can be used to configure existing Secret object which has admin password to access existing Keycloak | `""` |
+| | `identity.keycloak.auth.existingSecretKey` |    Can be used to configure the key inside existing Secret object which has admin password to access existing Keycloak | `"admin-password"` |
 | `elasticsearch`| `enabled` | Enable Elasticsearch deployment as part of the Camunda Platform Cluster | `true` |
 
 ### Camunda Platform
@@ -96,21 +152,23 @@ Check out the default [values.yaml](values.yaml) file, which contains the same c
 | | `zeebeIndexMaxSize` | Can be set to configure the maximum allowed zeebe index size in gigabytes. After reaching that size, curator will delete that corresponding index on the next run. To benefit from that configuration the schedule needs to be configured small enough, like every 15 minutes. | `` |
 | | `operateIndexTTL` | Defines after how many days an Operate index can be deleted. | `30` |
 | | `tasklistIndexTTL` | Defines after how many days an Tasklist index can be deleted. | `30` |
+| | `image.registry` | Can be used to set container image registry. | `""` |
 | | `image.repository` | Defines which image repository to use. | `bitnami/elasticsearch-curator` |
 | | `image.tag` | Defines the tag / version which should be used in the chart. | `5.8.4` |
 | `prometheusServiceMonitor` | | Configuration to configure a prometheus service monitor | |
 | | `enabled` | If true, then a service monitor will be deployed, which allows an installed prometheus controller to scrape metrics from the deployed pods. | `false`|
-| | `labels` | Can be set to configure extra labels, which will be added to the servicemonitor and can be used on the prometheus controller for selecting the servicemonitors | `release: metrics` |
-| | `scrapeInterval` | Can be set to configure the interval at which metrics should be scraped. Should be *less* than 60s if the provided grafana dashboard is used, which can be found [here](https://github.com/camunda/zeebe/tree/main/monitor/grafana), otherwise it isn't able to show any metrics which is aggregated over 1 min. | `10s` |
+| | `labels` | Can be set to configure extra labels, which will be added to the ServiceMonitor and can be used on the prometheus controller for selecting the ServiceMonitors | `release: metrics` |
+| | `scrapeInterval` | Can be set to configure the interval at which metrics should be scraped. Should be *less* than 60s if the provided grafana dashboard is used, which can be found in [zeebe/monitor/grafana](https://github.com/camunda/zeebe/tree/main/monitor/grafana), otherwise it isn't able to show any metrics which is aggregated over 1 min. | `10s` |
 
 ### Zeebe
 
-Information about Zeebe you can find [here](https://docs.camunda.io/docs/components/zeebe/zeebe-overview/).
+For more information about Zeebe, visit [Zeebe Overview](https://docs.camunda.io/docs/components/zeebe/zeebe-overview/).
 
 | Section | Parameter | Description | Default |
 |-|-|-|-|
 | `zeebe` | Configuration for the Zeebe sub chart. Contains configuration for the Zeebe broker and related resources. | |
 | | `image` | Configuration to configure the Zeebe image specifics. | |
+| | `image.registry` | Can be used to set container image registry. | `""` |
 | | `image.repository` | Defines which image repository to use. | `camunda/zeebe` |
 | | `image.tag` | Can be set to overwrite the global tag, which should be used in that chart. | ` ` |
 | | `image.pullSecrets` | Can be set to overwrite the global.image.pullSecrets | `{{ global.image.pullSecrets }}` |
@@ -164,13 +222,15 @@ Information about Zeebe you can find [here](https://docs.camunda.io/docs/compone
 
 ### Zeebe Gateway
 
-Information about the Zeebe Gateway you can find [here](https://docs.camunda.io/docs/components/zeebe/technical-concepts/architecture/#gateway).
+For more information about Zeebe Gateway, visit
+[Zeebe Gateway Overview](https://docs.camunda.io/docs/components/zeebe/technical-concepts/architecture/#gateways).
 
 | Section | Parameter | Description | Default |
 |-|-|-|-|
 | `zeebe-gateway`| | Configuration to define properties related to the Zeebe standalone gateway | |
 | | `replicas` | Defines how many standalone gateways are deployed | `1` |
 | | `image` | Configuration to configure the zeebe-gateway image specifics. | |
+| | `image.registry` | Can be used to set container image registry. | `""` |
 | | `image.repository` | Defines which image repository to use. | `camunda/zeebe` |
 | | `image.tag` | Can be set to overwrite the global tag, which should be used in that chart. | ` ` |
 | | `image.pullSecrets` | Can be set to overwrite the global.image.pullSecrets | `{{ global.image.pullSecrets }}` |
@@ -223,13 +283,15 @@ Information about the Zeebe Gateway you can find [here](https://docs.camunda.io/
 
 ### Operate
 
-Information about Operate you can find [here](https://docs.camunda.io/docs/components/operate/index/).
+For more information about Operate, visit
+[Operate Introduction](https://docs.camunda.io/docs/components/operate/operate-introduction/).
 
 | Section | Parameter | Description | Default |
 |-|-|-|-|
 | `operate` | | Configuration for the Operate sub chart. | |
 | | `enabled` | If true, the Operate deployment and its related resources are deployed via a helm release | `true` |
 | | `image` | Configuration to configure the Operate image specifics. | |
+| | `image.registry` | Can be used to set container image registry. | `""` |
 | | `image.repository` | Defines which image repository to use. | `camunda/operate` |
 | | `image.tag` | Can be set to overwrite the global tag, which should be used in that chart. | `` |
 | | `image.pullSecrets` | Can be set to overwrite the global.image.pullSecrets | `{{ global.image.pullSecrets }}` |
@@ -268,13 +330,15 @@ Information about Operate you can find [here](https://docs.camunda.io/docs/compo
 
 ### Tasklist
 
-Information about Tasklist you can find [here](https://docs.camunda.io/docs/components/tasklist/introduction/).
+For more information about Tasklist, visit
+[Tasklist Introduction](https://docs.camunda.io/docs/components/tasklist/introduction-to-tasklist/).
 
 | Section | Parameter | Description | Default |
 |-|-|-|-|
 | `tasklist` | | Configuration for the Tasklist sub chart. | |
 | | `enabled` | If true, the Tasklist deployment and its related resources are deployed via a helm release | `true` |
 | | `image` | Configuration to configure the Tasklist image specifics. | |
+| | `image.registry` | Can be used to set container image registry. | `""` |
 | | `image.repository` | Defines which image repository to use. | `camunda/tasklist` |
 | | `image.tag` | Can be set to overwrite the global tag, which should be used in that chart. | `` |
 | | `image.pullSecrets` | Can be set to overwrite the global.image.pullSecrets | `{{ global.image.pullSecrets }}` |
@@ -306,13 +370,14 @@ Information about Tasklist you can find [here](https://docs.camunda.io/docs/comp
 
 ### Optimize
 
-Information about Optimize you can find [here](https://docs.camunda.io/docs/components/optimize/what-is-optimize/).
+For more information, visit [Optimize Introduction](https://docs.camunda.io/optimize/components/what-is-optimize/).
 
 | Section | Parameter | Description | Default |
 |-|-|-|-|
 | `optimize` | |  Configuration for the Optimize sub chart. | |
 | | `enabled` |  If true, the Optimize deployment and its related resources are deployed via a helm release | `true` |
 | | `image` |  Configuration for the Optimize image specifics | |
+| | `image.registry` | Can be used to set container image registry. | `""` |
 | | `image.repository` |  Defines which image repository to use | `camunda/optimize` |
 | | `image.tag` |  Can be set to overwrite the global tag, which should be used in that chart | `3.8.0` |
 | | `image.pullSecrets` | Can be set to overwrite the global.image.pullSecrets | `{{ global.image.pullSecrets }}` |
@@ -331,6 +396,7 @@ Information about Optimize you can find [here](https://docs.camunda.io/docs/comp
 | | `service` |  Configuration for the Optimize service. | |
 | | `service.type` | Defines the [type of the service](https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types) | `ClusterIP` |
 | | `service.port` | Defines the port of the service, where the Optimize web application will be available | `80` |
+| | `service.managementPort` | Defines the management port, where actuator and the backupAPI will be available | `8092` |
 | | `service.annotations` |  Can be used to define annotations, which will be applied to the Optimize service | `{}` |
 | | `podSecurityContext` | Defines the security options the Optimize pod should be run with | `{ }` |
 | | `containerSecurityContext` | Defines the security options the Optimize container should be run with | `{ }` |
@@ -349,7 +415,7 @@ Information about Optimize you can find [here](https://docs.camunda.io/docs/comp
 
 ### Identity
 
-Information about Identity you can find [here](https://docs.camunda.io/docs/self-managed/identity/what-is-identity/).
+For more information, visit [Identity Overview](https://docs.camunda.io/docs/self-managed/identity/what-is-identity/).
 
 | Section | Parameter | Description | Default |
 |-|-|-|-|
@@ -358,11 +424,12 @@ Information about Identity you can find [here](https://docs.camunda.io/docs/self
 | | `firstUser.username` | Defines the username of the first user, needed to log in into the web applications | `demo` |
 | | `firstUser.password` | Defines the password of the first user, needed to log in into the web applications | `demo` |
 | | `image` |  Configuration to configure the Identity image specifics | |
+| | `image.registry` | Can be used to set container image registry. | `""` |
 | | `image.repository` |  Defines which image repository to use | `camunda/identity` |
 | | `image.tag` |   Can be set to overwrite the global.image.tag | |
 | | `image.pullSecrets` | Can be set to overwrite the global.image.pullSecrets | `{{ global.image.pullSecrets }}` |
 | | `fullURL` |  Can be used when Ingress is configured (for both multi and single domain setup). <br/> Note: If the `ContextPath` is configured, then value of `ContextPath` should be included in the fullURL too. | |
-| | `contextPath` |  Can be used to make Identity web application works on a custom sub-path. This is mainly used to run Camunda Platform web applications under a single domain. | |
+| | `contextPath` |  Can be used to make Identity web application works on a custom sub-path. This is mainly used to run Camunda Platform web applications under a single domain. **Note:** Identity cannot be accessed over HTTP if a sub-path is configured. i.e. the value of "fullURL" should use HTTPS protocol when "contextPath" is not set to "/". However, if the combined Ingress is used without HTTPS (e.g. for test/development proposes), then set `contextPath: "/"` to access Identity over HTTP. | `` |
 | | `podAnnotations` | Can be used to define extra Identity pod annotations | `{ }` |
 | | `service` |  Configuration to configure the Identity service. | |
 | | `service.type` | Defines the [type of the service](https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types) | `ClusterIP` |
@@ -397,7 +464,7 @@ Information about Identity you can find [here](https://docs.camunda.io/docs/self
 
 ### Elasticsearch
 
-This chart has a dependency on the [Elasticsearch Helm Chart](https://github.com/elastic/helm-charts/blob/master/elasticsearch/README.md). All variables related to Elasticsearch which can be found [here](https://github.com/elastic/helm-charts/blob/main/elasticsearch/values.yaml) can be set under `elasticsearch`.
+Camunda Platform 8 Helm chart has a dependency on the [Elasticsearch Helm Chart](https://github.com/elastic/helm-charts/blob/master/elasticsearch/README.md). All variables related to Elasticsearch can be found in [elastic/helm-charts/values.yaml](https://github.com/elastic/helm-charts/blob/main/elasticsearch/values.yaml) and can be set under `elasticsearch`.
 
 | Section | Parameter | Description | Default |
 |-|-|-|-|
@@ -411,9 +478,66 @@ elasticsearch:
   imageTag: <YOUR VERSION HERE>
 ```
 
-## Adding dynamic exporters to Zeebe Brokers
+### Keycloak
 
-This chart supports the addition of Zeebe Exporters by using initContainer as shown in the following example:
+When Camunda Platform 8 Identity component is enabled by default, and it depends on
+[Bitnami Keycloak chart](https://github.com/bitnami/charts/tree/main/bitnami/keycloak).
+Since Keycloak is a dependency for Identity, all variables related to Keycloak can be found in
+[bitnami/keycloak/values.yaml](https://github.com/bitnami/charts/blob/main/bitnami/keycloak/values.yaml)
+and can be set under `identity.keycloak`.
+
+| Section | Parameter | Description | Default |
+|-|-|-|-|
+| `identity.keycloak`| `enabled` | If true, enables Keycloak chart deployment as part of the Camunda Platform Helm chart | `true` |
+
+**Example:**
+
+```yaml
+identity:
+  keycloak:
+    enabled: true
+```
+
+#### Keycloak Theme
+
+Camunda provides a custom theme for the login page used in all apps. The theme is copied from the Identity image.
+
+The theme is added to Keycloak by default, however, since Helm v3 (latest checked 3.10.x) doesn't merge lists
+with custom values files, then you will need to add this to your own values file if you override any of
+`extraVolumes`, `initContainers`, or `extraVolumeMounts`.
+
+```yaml
+identity:
+  keycloak:
+    extraVolumes:
+    - name: camunda-theme
+      emptyDir:
+        sizeLimit: 10Mi
+    initContainers:
+    - name: copy-camunda-theme
+      image: >-
+        {{- $identityImage := (dict "base" .Values.global "overlay" .Values.global.identity) -}}
+        {{- include "camundaPlatform.image" $identityImage }}
+      imagePullPolicy: "{{ .Values.global.image.pullPolicy }}"
+      command: ["sh", "-c", "cp -a /app/keycloak-theme/* /mnt"]
+      volumeMounts:
+      - name: camunda-theme
+        mountPath: /mnt
+    extraVolumeMounts:
+    - name: camunda-theme
+      mountPath: /opt/bitnami/keycloak/themes/identity
+```
+
+## Guides
+
+> **Note**
+>
+> For full list of guides list, please visit
+> [Helm/Kubernetes Guides](https://docs.camunda.io/docs/next/self-managed/platform-deployment/helm-kubernetes/overview/)
+
+### Adding dynamic exporters to Zeebe Brokers
+
+This chart supports the addition of Zeebe Exporters by using `initContainer` as shown in the following example:
 
 ```
 extraInitContainers:
@@ -439,21 +563,25 @@ env:
   - name: ZEEBE_HAZELCAST_REMOTE_ADDRESS
     value: "{{ .Release.Name }}-hazelcast"
 ```
-This example is downloading the exporters Jar from a URL and adding the Jars to the `exporters` directory that will be scanned for jars and added to the zeebe broker classpath. Then with `environment variables` you can configure the exporter parameters.
+
+This example is downloading the exporters' Jar from a URL and adding the Jars to the `exporters` directory,
+which will be scanned for jars and added to the Zeebe broker classpath. Then with `environment variables`,
+you can configure the exporter parameters.
 
 ## Development
 
-For development purpose you might want to deploy and test the charts without creating a new helm chart release. In order to do this you can run the following:
+For development purposes, you might want to deploy and test the charts without creating a new helm chart release.
+To do this you can run the following:
 
 ```sh
- helm install <RELEASENAME> --atomic --debug charts/camunda-platform/
+ helm install YOUR_RELEASE_NAME --atomic --debug ./charts/camunda-platform
 ```
 
  * `--atomic if set, the installation process deletes the installation on failure. The --wait flag will be set automatically if --atomic is used`
 
  * `--debug enable verbose output`
 
-To generate the resources / manifests without really install them you can use: 
+To generate the resources/manifests without really installing them you can use: 
 
  * `--dry-run simulate an install`
 
@@ -468,16 +596,14 @@ Then you need to download the dependencies first.
 Run the following to add resolve the dependencies:
 
 ```sh
-helm repo add elastic https://helm.elastic.co
-helm repo add bitnami https://charts.bitnami.com/bitnami
-helm repo update
+make helm.repos-add
 ```
 
-After this you can run: `make deps`, which will update and download the dependencies for all charts.
+After this you can run: `make helm.dependency-update`, which will update and download the dependencies for all charts.
 
 The execution should look like this:
 ```
-$ make deps
+$ make helm.dependency-update
 helm dependency update charts/camunda-platform
 Hang tight while we grab the latest from your chart repositories...
 ...Successfully got an update from the "camunda-platform" chart repository
@@ -505,4 +631,4 @@ Downloading common from repo https://charts.bitnami.com/bitnami
 
 ## Releasing the Charts
 
-In order to find out how to release the charts please see the corresponding [release guide](/RELEASE.md).
+To find out how to release the charts please see the corresponding [release guide](../../RELEASE.md).

@@ -56,6 +56,30 @@ app.kubernetes.io/part-of: camunda-platform
 {{- end -}}
 
 {{/*
+Set image according the values of base (global) or overlay (subchart) values.
+If the "overlay" values exist, they will override the "base" values, otherwise the "base" values will be used.
+Usage:
+  This template has 2 syntaxes:
+  1. Top-level values: It relies on ".Values.global.image" (base) and ".Values.image" (overlay) dicts.
+     Example: {{ include "camundaPlatform.image" . }}
+  2. Parameterized values: It relies on ".base.image" and ".overlay.image" dicts.
+     Example: {{ include "camundaPlatform.image" (dict "base" .Values.global "overlay" .Values.retentionPolicy) }}
+*/}}
+{{- define "camundaPlatform.image" -}}
+    {{/* Allow the template to work with top-level and parameterized values. */}}
+    {{- $baseImage := (hasKey . "base" | ternary (.base).image (.Values).global.image) -}}
+    {{- $overlayImage := (hasKey . "overlay" | ternary (.overlay).image (.Values).image) -}}
+
+    {{- $imageRegistry := $overlayImage.registry | default $baseImage.registry -}}
+    {{- printf "%s%s%s:%s"
+        $imageRegistry
+        (empty $imageRegistry | ternary "" "/")
+        ($overlayImage.repository | default $baseImage.repository)
+        ($overlayImage.tag | default $baseImage.tag)
+    -}}
+{{- end -}}
+
+{{/*
 Set imagePullSecrets according the values of global, subchart, or empty.
 */}}
 {{- define "camundaPlatform.imagePullSecrets" -}}
@@ -75,9 +99,10 @@ Subcharts can't access values from other sub-charts or the parent, global only. 
 */}}
 
 {{- define "camundaPlatform.issuerBackendUrl" -}}
-{{- if (.Values.global.identity.keycloak.fullname) -}}
-http://{{ .Values.global.identity.keycloak.fullname | trunc 20 | trimSuffix "-" }}:80/auth/realms/camunda-platform
-{{- else -}}
-http://{{ include "common.names.dependency.fullname" (dict "chartName" "keycloak" "chartValues" . "context" $) | trunc 20 | trimSuffix "-" }}:80/auth/realms/camunda-platform
-{{- end -}}
+    {{- $keycloakRealmPath := "/realms/camunda-platform" -}}
+    {{- if .Values.global.identity.keycloak.url -}}
+        {{- include "identity.keycloak.url" . -}}{{- $keycloakRealmPath -}}
+    {{- else -}}
+        http://{{ include "common.names.dependency.fullname" (dict "chartName" "keycloak" "chartValues" . "context" $) | trunc 20 | trimSuffix "-" }}:80{{- include "identity.keycloak.contextPath" . -}}{{ $keycloakRealmPath }}
+    {{- end -}}
 {{- end -}}
