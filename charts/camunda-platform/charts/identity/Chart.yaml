@@ -1,7 +1,7 @@
 apiVersion: v2
 description: Identity Helm Chart for Kubernetes
 name: identity
-version: 8.0.13
+version: 8.1.1
 type: application
 icon: https://helm.camunda.io/imgs/camunda.svg
 annotations:
@@ -12,3 +12,4 @@ dependencies:
   - name: keycloak
     repository: "https://charts.bitnami.com/bitnami"
     version: 7.1.6
+    condition: "keycloak.enabled"

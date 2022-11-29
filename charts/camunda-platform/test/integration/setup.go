@@ -15,11 +15,26 @@
 package integration
 
 import (
+	"fmt"
 	"os"
 	"strings"
 
 	"github.com/gruntwork-io/terratest/modules/random"
 )
+
+type namespaceSection struct {
+	textVar string
+	prefix  string
+}
+
+func namespaceFormatWithEnvVars(nsBase string, nsSections []namespaceSection) string {
+	for _, nss := range nsSections {
+		if nssText, exist := os.LookupEnv(nss.textVar); exist {
+			nsBase += fmt.Sprintf("-%s-%s", nss.prefix, nssText)
+		}
+	}
+	return nsBase
+}
 
 func truncateString(str string, num int) string {
 	shortenStr := str
@@ -32,11 +47,14 @@ func truncateString(str string, num int) string {
 func createNamespaceName() string {
 	// if triggered by a github action the environment variable is set
 	// we use it to better identify the test
-	commitSHA, exist := os.LookupEnv("GITHUB_SHA")
-	namespace := "camunda-platform-" + strings.ToLower(random.UniqueId())
-	if exist {
-		namespace += "-" + commitSHA
+
+	namespaceSections := []namespaceSection{
+		{"GITHUB_PR_NUMBER", "pr"},
+		{"GITHUB_PR_HEAD_SHA_SHORT", "sha"},
+		{"GITHUB_WORKFLOW_RUN_ID", "run"},
 	}
+	namespace := namespaceFormatWithEnvVars("camunda-platform", namespaceSections)
+	namespace += "-rnd-" + strings.ToLower(random.UniqueId())
 
 	// max namespace length is 63 characters
 	// https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names

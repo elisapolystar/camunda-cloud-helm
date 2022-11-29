@@ -24,7 +24,6 @@
 
 # Global configuration for variables which can be accessed by all sub charts
 global:
-
   # Annotations can be used to define common annotations, which should be applied to all deployments
   annotations: {}
   # Labels can be used to define common labels, which should be applied to all deployments
@@ -33,8 +32,11 @@ global:
 
   # Image configuration to be used in each sub chart
   image:
+    # Image.registry can be used to set container image registry.
+    registry: ""
     # Image.tag defines the tag / version which should be used in the chart
-    tag: 8.0.0
+    # Don't change the comment after the value, it's needed due to a bug yq. Check Makefile for more details.
+    tag: 8.1.2  # global.image.tag
     # Image.pullPolicy defines the image pull policy which should be used https://kubernetes.io/docs/concepts/containers/images/#image-pull-policy
     pullPolicy: IfNotPresent
     # Image.pullSecrets can be used to configure image pull secrets https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod
@@ -60,7 +62,7 @@ global:
       # Ingress.tls.secretName defines the secret name which contains the TLS private key and certificate
       secretName: ""
 
-  # Elasticsearch configuration which is shared between the sub charts  
+  # Elasticsearch configuration which is shared between the sub charts
   elasticsearch:
     # Elasticsearch.disableExporter if true, disables the elastic exporter in zeebe
     disableExporter: true
@@ -82,10 +84,27 @@ global:
   # Identity configuration to configure identity specifics on global level, which can be accessed by other sub-charts
   identity:
     keycloak:
-      # Identity.keycloak.fullname can be used to change the referenced Keycloak service name inside the sub-charts, like operate, optimize, etc.
-      # Subcharts can't access values from other sub-charts or the parent, global only.
-      # This is useful if the identity.keycloak.fullnameOverride is set, and specifies a different name for the Keycloak service.
-      fullname: ""
+      # Identity.keycloak.url can be used incorporate with "identity.keycloak.enabled: false" to use your own Keycloak instead of the one comes with Camunda Platform Helm chart.
+      url: {}
+        # Example to produce the following URL "https://keycloak.prod.svc.cluster.local:8443":
+        # url:
+        #   protocol: "https"
+        #   host: "keycloak.prod.svc.cluster.local"
+        #   port: "8443"
+      # Identity.keycloak.contextPath defines the endpoint of Keycloak which varies between Keycloak versions.
+      # In Keycloak v16.x.x it's hard-coded as '/auth', but in v19.x.x it's '/'.
+      contextPath: "/auth"
+      # Identity.keycloak.auth same as "identity.keycloak.auth" but it's used for existing Keycloak.
+      auth: {}
+        # Identity.keycloak.auth.adminUser can be used to configure admin user to access existing Keycloak.
+        # adminUser: ""
+        # Identity.keycloak.auth.existingSecret can be used to configure existing Secret object which has admin password
+        # to access existing Keycloak.
+        # existingSecret: ""
+        # Identity.keycloak.auth.existingSecretKey can be used to configure the key inside existing Secret object
+        # which has admin password to access existing Keycloak.
+        # existingSecretKey: "admin-password"
+
     # Identity.auth configuration, to configure Identity authentication setup
     auth:
       # Identity.auth.enabled if true, enables the Identity authentication otherwise basic-auth will be used on all services.
@@ -133,6 +152,8 @@ zeebe:
 
   # Image configuration to configure the zeebe image specifics
   image:
+    # Image.registry can be used to set container image registry.
+    registry: ""
     # Image.repository defines which image repository to use
     repository: camunda/zeebe
     # Image.tag can be set to overwrite the global tag, which should be used in that chart
@@ -205,7 +226,7 @@ zeebe:
     # ServiceAccount.name can be used to set the name of the broker service account
     name: ""
     # ServiceAccount.annotations can be used to set the annotations of the broker service account
-    annotations: { }
+    annotations: {}
 
   # CpuThreadCount defines how many threads can be used for the processing on each broker pod
   cpuThreadCount: "3"
@@ -228,21 +249,21 @@ zeebe:
   # PvcSize defines the persistent volume claim size, which is used by each broker pod https://kubernetes.io/docs/concepts/storage/persistent-volumes/#persistentvolumeclaims
   pvcSize: "32Gi"
   # PvcAccessModes can be used to configure the persistent volume claim access mode https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes
-  pvcAccessModes: [ "ReadWriteOnce" ]
+  pvcAccessModes: ["ReadWriteOnce"]
   # PvcStorageClassName can be used to set the storage class name which should be used by the persistent volume claim. It is recommended to use a storage class, which is backed with a SSD.
   pvcStorageClassName: ''
 
   # ExtraVolumes can be used to define extra volumes for the broker pods, useful for additional exporters
-  extraVolumes: [ ]
+  extraVolumes: []
   # ExtraVolumeMounts can be used to mount extra volumes for the broker pods, useful for additional exporters
-  extraVolumeMounts: [ ]
+  extraVolumeMounts: []
   # ExtraInitContainers can be used to set up extra init containers for the broker pods, useful for additional exporters
-  extraInitContainers: [ ]
+  extraInitContainers: []
 
   # PodAnnotations can be used to define extra broker pod annotations
-  podAnnotations: { }
+  podAnnotations: {}
   # PodLabels can be used to define extra broker pod labels
-  podLabels: { }
+  podLabels: {}
   # PodDisruptionBudget configuration to configure a pod disruption budget for the broker pods https://kubernetes.io/docs/tasks/run-application/configure-pdb/
   podDisruptionBudget:
     # PodDisruptionBudget.enabled if true a pod disruption budget is defined for the brokers
@@ -253,15 +274,15 @@ zeebe:
     maxUnavailable: 1
 
   # PodSecurityContext defines the security options the Zeebe broker pod should be run with
-  podSecurityContext: { }
+  podSecurityContext: {}
 
   # ContainerSecurityContext defines the security options the Zeebe broker container should be run with
-  containerSecurityContext: { }
+  containerSecurityContext: {}
 
   # NodeSelector can be used to define on which nodes the broker pods should run
-  nodeSelector: { }
+  nodeSelector: {}
   # Tolerations can be used to define pod toleration's https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
-  tolerations: [ ]
+  tolerations: []
   # Affinity can be used to define pod affinity or anti-affinity https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity
   # The default defined PodAntiAffinity allows constraining on which nodes the Zeebe pods are scheduled on https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#inter-pod-affinity-and-anti-affinity
   # It uses a hard requirement for scheduling and works based on the Zeebe pod labels
@@ -296,6 +317,8 @@ zeebe-gateway:
   replicas: 2
   # Image configuration to configure the zeebe-gateway image specifics
   image:
+    # Image.registry can be used to set container image registry.
+    registry: ""
     # Image.repository defines which image repository to use
     repository: camunda/zeebe
     # Image.tag can be set to overwrite the global tag, which should be used in that chart
@@ -303,9 +326,9 @@ zeebe-gateway:
     # Image.pullSecrets can be used to configure image pull secrets https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod
     pullSecrets: []
   # PodAnnotations can be used to define extra gateway pod annotations
-  podAnnotations: { }
+  podAnnotations: {}
   # PodLabels can be used to define extra gateway pod labels
-  podLabels: { }
+  podLabels: {}
 
   # LogLevel defines the log level which is used by the gateway
   logLevel: info
@@ -316,7 +339,7 @@ zeebe-gateway:
     -XX:+ExitOnOutOfMemoryError
 
   # Env can be used to set extra environment variables in each gateway container
-  env: [ ]
+  env: []
   # ConfigMap configuration which will be applied to the mounted config map.
   configMap:
     # ConfigMap.defaultMode can be used to set permissions on created files by default. Must be an octal value between 0000 and 0777 or a decimal value between 0 and 511.
@@ -347,15 +370,15 @@ zeebe-gateway:
   priorityClassName: ""
 
   # PodSecurityContext defines the security options the gateway pod should be run with
-  podSecurityContext: { }
+  podSecurityContext: {}
 
   # ContainerSecurityContext defines the security options the gateway container should be run with
-  containerSecurityContext: { }
+  containerSecurityContext: {}
 
   # NodeSelector can be used to define on which nodes the gateway pods should run
-  nodeSelector: { }
+  nodeSelector: {}
   # Tolerations can be used to define pod toleration's https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
-  tolerations: [ ]
+  tolerations: []
   # Affinity can be used to define pod affinity or anti-affinity https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity
   # The default defined PodAntiAffinity allows constraining on which nodes the Zeebe gateway pods are scheduled on https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#inter-pod-affinity-and-anti-affinity
   # It uses a hard requirement for scheduling and works based on the Zeebe gateway pod labels
@@ -371,11 +394,11 @@ zeebe-gateway:
           topologyKey: "kubernetes.io/hostname"
 
   # ExtraVolumeMounts can be used to mount extra volumes for the gateway pods, useful for enabling tls between gateway and broker
-  extraVolumeMounts: [ ]
+  extraVolumeMounts: []
   # ExtraVolumes can be used to define extra volumes for the gateway pods, useful for enabling tls between gateway and broker
-  extraVolumes: [ ]
+  extraVolumes: []
   # ExtraInitContainers can be used to set up extra init containers for the gateway pods, useful for adding interceptors
-  extraInitContainers: [ ]
+  extraInitContainers: []
 
   # Service configuration for the gateway service
   service:
@@ -384,7 +407,7 @@ zeebe-gateway:
     # Service.loadBalancerIP defines public ip of the load balancer if the type is LoadBalancer
     loadBalancerIP: ""
     # Service.loadBalancerSourceRanges defines list of allowed source ip address ranges if the type is LoadBalancer
-    loadBalancerSourceRanges: [ ]
+    loadBalancerSourceRanges: []
     # Service.httpPort defines the port of the http endpoint, where for example metrics are provided
     httpPort: 9600
     # Service.httpName defines the name of the http endpoint, where for example metrics are provided
@@ -407,7 +430,7 @@ zeebe-gateway:
     # ServiceAccount.name can be used to set the name of the gateway service account
     name: ""
     # ServiceAccount.annotations can be used to set the annotations of the gateway service account
-    annotations: { }
+    annotations: {}
 
   # Ingress configuration to configure the ingress resource
   ingress:
@@ -439,6 +462,8 @@ operate:
 
   # Image configuration to configure the Operate image specifics
   image:
+    # Image.registry can be used to set container image registry.
+    registry: ""
     # Image.repository defines which image repository to use
     repository: camunda/operate
     # Image.tag can be set to overwrite the global tag, which should be used in that chart
@@ -450,9 +475,9 @@ operate:
   # contextPath: "/operate"
 
   # PodAnnotations can be used to define extra Operate pod annotations
-  podAnnotations: { }
+  podAnnotations: {}
   # PodLabels can be used to define extra Operate pod labels
-  podLabels: { }
+  podLabels: {}
 
   # Logging configuration for the Operate logging. This template will be directly included in the Operate configuration yaml file
   logging:
@@ -499,7 +524,7 @@ operate:
     # ServiceAccount.name can be used to set the name of the Operate service account
     name: ""
     # ServiceAccount.annotations can be used to set the annotations of the Operate service account
-    annotations: { }
+    annotations: {}
 
   # Ingress configuration to configure the ingress resource
   ingress:
@@ -524,17 +549,17 @@ operate:
       secretName: ""
 
   # PodSecurityContext defines the security options the Operate pod should be run with
-  podSecurityContext: { }
+  podSecurityContext: {}
 
   # ContainerSecurityContext defines the security options the Operate container should be run with
-  containerSecurityContext: { }
+  containerSecurityContext: {}
 
   # NodeSelector can be used to define on which nodes the Operate pods should run
-  nodeSelector: { }
+  nodeSelector: {}
   # Tolerations can be used to define pod toleration's https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
-  tolerations: [ ]
+  tolerations: []
   # Affinity can be used to define pod affinity or anti-affinity https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity
-  affinity: { }
+  affinity: {}
 
 # Tasklist configuration for the tasklist sub chart.
 tasklist:
@@ -543,6 +568,8 @@ tasklist:
 
   # Image configuration to configure the tasklist image specifics
   image:
+    # Image.registry can be used to set container image registry.
+    registry: ""
     # Image.repository defines which image repository to use
     repository: camunda/tasklist
     # Image.tag can be set to overwrite the global tag, which should be used in that chart
@@ -554,12 +581,12 @@ tasklist:
   # contextPath: "/tasklist"
 
   # Env can be used to set extra environment variables on each Tasklist container
-  env: [ ]
+  env: []
 
   # PodAnnotations can be used to define extra Tasklist pod annotations
-  podAnnotations: { }
+  podAnnotations: {}
   # PodLabels can be used to define extra tasklist pod labels
-  podLabels: { }
+  podLabels: {}
 
   # ConfigMap configuration which will be applied to the mounted config map.
   configMap:
@@ -581,22 +608,22 @@ tasklist:
   graphqlPlaygroundRequestCredentials: ""
 
   # ExtraVolumes can be used to define extra volumes for the Tasklist pods, useful for tls and self-signed certificates
-  extraVolumes: [ ]
+  extraVolumes: []
   # ExtraVolumeMounts can be used to mount extra volumes for the Tasklist pods, useful for tls and self-signed certificates
-  extraVolumeMounts: [ ]
+  extraVolumeMounts: []
 
   # PodSecurityContext defines the security options the Tasklist pod should be run with
-  podSecurityContext: { }
+  podSecurityContext: {}
 
   # ContainerSecurityContext defines the security options the Tasklist container should be run with
-  containerSecurityContext: { }
+  containerSecurityContext: {}
 
   # NodeSelector can be used to define on which nodes the Tasklist pods should run
-  nodeSelector: { }
+  nodeSelector: {}
   # Tolerations can be used to define pod toleration's https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
-  tolerations: [ ]
+  tolerations: []
   # Affinity can be used to define pod affinity or anti-affinity https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity
-  affinity: { }
+  affinity: {}
 
   # Resources configuration to set request and limit configuration for the container https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#requests-and-limits
   resources:
@@ -635,10 +662,13 @@ optimize:
 
   # Image configuration to configure the Optimize image specifics
   image:
+    # Image.registry can be used to set container image registry.
+    registry: ""
     # Image.repository defines which image repository to use
     repository: camunda/optimize
     # Image.tag can be set to overwrite the global tag, which should be used in that chart
-    tag: 3.9.0-preview-2
+    # Don't change the comment after the value, it's needed due to a bug yq. Check Makefile for more details.
+    tag: 3.9.1  # optimize.image.tag
     # Image.pullSecrets can be used to configure image pull secrets https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod
     pullSecrets: []
 
@@ -646,9 +676,9 @@ optimize:
   # contextPath: "/optimize"
 
   # PodAnnotations can be used to define extra Optimize pod annotations
-  podAnnotations: { }
+  podAnnotations: {}
   # PodLabels can be used to define extra Optimize pod labels
-  podLabels: { }
+  podLabels: {}
 
   # PartitionCount defines how many Zeebe partitions are set up in the cluster and which should be imported by Optimize
   partitionCount: "3"
@@ -668,7 +698,7 @@ optimize:
     # ServiceAccount.name can be used to set the name of the Optimize service account
     name: ""
     # ServiceAccount.annotations can be used to set the annotations of the Optimize service account
-    annotations: { }
+    annotations: {}
 
   # Service configuration to configure the Optimize service.
   service:
@@ -678,19 +708,21 @@ optimize:
     port: 80
     # Service.annotations can be used to define annotations, which will be applied to the Optimize service
     annotations: {}
+    # Service.managementPort defines the port where actuator will be available. Also required to reach backup API
+    managementPort: 8092
 
   # PodSecurityContext defines the security options the Optimize pod should be run with
-  podSecurityContext: { }
+  podSecurityContext: {}
 
   # ContainerSecurityContext defines the security options the Optimize container should be run with
-  containerSecurityContext: { }
+  containerSecurityContext: {}
 
   # NodeSelector can be used to define on which nodes the Optimize pods should run
-  nodeSelector: { }
+  nodeSelector: {}
   # Tolerations can be used to define pod toleration's https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
-  tolerations: [ ]
+  tolerations: []
   # Affinity can be used to define pod affinity or anti-affinity https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity
-  affinity: { }
+  affinity: {}
 
   # Resources configuration to set request and limit configuration for the container https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#requests-and-limits
   resources:
@@ -742,6 +774,8 @@ retentionPolicy:
 
   # Image configuration for the elasticsearch curator cronjob
   image:
+    # Image.registry can be used to set container image registry.
+    registry: ""
     # Image.repository defines which image repository to use
     repository: bitnami/elasticsearch-curator
     # Image.tag defines the tag / version which should be used in the chart
@@ -777,6 +811,8 @@ identity:
 
   # Image configuration to configure the identity image specifics
   image:
+    # Image.registry can be used to set container image registry.
+    registry: ""
     # Image.repository defines which image repository to use
     repository: camunda/identity
     # Image.tag can be set to overwrite the global tag, which should be used in that chart
@@ -788,11 +824,15 @@ identity:
   # Note: If the `ContextPath` is configured, then value of `ContextPath` should be included in the URL too.
   # fullURL: "https://camunda.example.com/identity"
 
-  # ContextPath can be used to make Identity web application works on a custom sub-path. This is mainly used to run Camunda Platform web applications under a single domain.
+  # ContextPath can be used to make Identity web application works on a custom sub-path. This is mainly used
+  # to run Camunda Platform web applications under a single domain.
+  # Note: Identity cannot be accessed over HTTP if a sub-path is configured. i.e. the value of "fullURL"
+  #       should use HTTPS protocol when "contextPath" is not set to "/". However, if the combined Ingress is used
+  #       without HTTPS (e.g. for test/development proposes), then set `contextPath: "/"` to access Identity over HTTP.
   # contextPath: "/identity"
 
   # PodAnnotations can be used to define extra Identity pod annotations
-  podAnnotations: { }
+  podAnnotations: {}
 
   # Service configuration to configure the identity service.
   service:
@@ -804,17 +844,17 @@ identity:
     annotations: {}
 
   # PodSecurityContext defines the security options the Identity pod should be run with
-  podSecurityContext: { }
+  podSecurityContext: {}
 
   # ContainerSecurityContext defines the security options the Identity container should be run with
-  containerSecurityContext: { }
+  containerSecurityContext: {}
 
   # NodeSelector can be used to define on which nodes the Identity pods should run
-  nodeSelector: { }
+  nodeSelector: {}
   # Tolerations can be used to define pod toleration's https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
-  tolerations: [ ]
+  tolerations: []
   # Affinity can be used to define pod affinity or anti-affinity https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity
-  affinity: { }
+  affinity: {}
 
   # Resources configuration to set request and limit configuration for the container https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#requests-and-limits
   resources:
@@ -834,8 +874,48 @@ identity:
   # ExtraVolumeMounts can be used to mount extra volumes for the identity pods, useful for tls and self-signed certificates
   extraVolumeMounts: []
 
-  # Keycloak configuration, for the keycloak dependency chart which is used by identity. See the chart documentation https://github.com/bitnami/charts/tree/master/bitnami/keycloak#parameters for more details.
+  # Keycloak configuration, for the keycloak dependency chart which is used by identity.
+  # For more details: https://github.com/bitnami/charts/tree/master/bitnami/keycloak#parameters
   keycloak:
+    # Keycloak.enabled is used incorporate with "global.identity.keycloak" to use your own Keycloak instead of the one comes with Camunda Platform Helm chart.
+    enabled: true
+
+    # NOTE: Since Helm v3 (latest checked 3.10.x) doesn't merge lists with custom values files, then you will need to
+    # add this to your own values file if you override any of "extraVolumes", "initContainers", or "extraVolumeMounts".
+    extraVolumes:
+    - name: camunda-theme
+      emptyDir:
+        sizeLimit: 10Mi
+
+    initContainers:
+    - name: copy-camunda-theme
+      image: >-
+        {{- $identityImageParams := (dict "base" .Values.global "overlay" .Values.global.identity) -}}
+        {{- include "camundaPlatform.imageByParams" $identityImageParams }}
+      imagePullPolicy: "{{ .Values.global.image.pullPolicy }}"
+      command: ["sh", "-c", "cp -a /app/keycloak-theme/* /mnt"]
+      volumeMounts:
+      - name: camunda-theme
+        mountPath: /mnt
+
+    extraVolumeMounts:
+    - name: camunda-theme
+      mountPath: /opt/bitnami/keycloak/themes/identity
+
+    extraEnvVars:
+    # KEYCLOAK_PROXY_ADDRESS_FORWARDING can be used with Ingress that has SSL Termination. It will be "true" if the TLS
+    # in global Ingress is enabled, but it could be overwritten with separate Ingress setup.
+    - name: KEYCLOAK_PROXY_ADDRESS_FORWARDING
+      value: "{{ .Values.global.ingress.tls.enabled }}"
+    # KEYCLOAK_HTTP_RELATIVE_PATH is valid for v19.x.x only and it's added for compatibility between Keycloak versions
+    # where in Keycloak v16.x.x it's hard-coded as '/auth', but in v19.x.x it's '/'.
+    - name: KEYCLOAK_HTTP_RELATIVE_PATH
+      value: "{{ .Values.global.identity.keycloak.contextPath }}"
+    # Keycloak.ingress can be used to configure an Ingress for Keycloak. No need to enable it if the global Ingress
+    # under "global.ingress" is enabled. However, it's possible to setup Keycloak on a separate Ingress if needed.
+    # For more details: https://github.com/bitnami/charts/tree/main/bitnami/keycloak#configure-ingress
+    ingress:
+      enabled: false
     # Keycloak.service configuration, to configure the service which is deployed along with keycloak
     service:
       # Keycloak.service.type can be set to change the service type.
@@ -863,6 +943,10 @@ identity:
       #     tls-truestore-password: myTlsTruestorePasswordKey
       existingSecret: ""
 
+      ## Keycloak.auth.tls.enabled can be used to enable TLS encryption. Required for HTTPs traffic.
+      tls:
+        enabled: false
+
   # ServiceAccount configuration for the service account where the identity pods are assigned to
   serviceAccount:
     # ServiceAccount.enabled if true, enables the identity service account
@@ -870,7 +954,7 @@ identity:
     # ServiceAccount.name can be used to set the name of the identity service account
     name: ""
     # ServiceAccount.annotations can be used to set the annotations of the identity service account
-    annotations: { }
+    annotations: {}
 
   # Ingress configuration to configure the ingress resource
   ingress:
@@ -907,7 +991,7 @@ elasticsearch:
       enabled: true
 
   volumeClaimTemplate:
-    accessModes: [ "ReadWriteOnce" ]
+    accessModes: ["ReadWriteOnce"]
     resources:
       requests:
         storage: 64Gi

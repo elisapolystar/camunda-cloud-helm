@@ -25,7 +25,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	appsv1 "k8s.io/api/apps/v1"
-	v12 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 )
 
 type deploymentTemplateTest struct {
@@ -120,6 +120,29 @@ func (s *deploymentTemplateTest) TestContainerSetPriorityClassName() {
 
 	// then
 	s.Require().Equal("PRIO", deployment.Spec.Template.Spec.PriorityClassName)
+}
+
+func (s *deploymentTemplateTest) TestContainerSetImageNameSubChart() {
+	// given
+	options := &helm.Options{
+		SetValues: map[string]string{
+			"global.image.registry":          "global.custom.registry.io",
+			"global.image.tag":               "8.x.x",
+			"zeebe-gateway.image.registry":   "subchart.custom.registry.io",
+			"zeebe-gateway.image.repository": "camunda/zeebe-test",
+			"zeebe-gateway.image.tag":        "snapshot",
+		},
+		KubectlOptions: k8s.NewKubectlOptions("", "", s.namespace),
+	}
+
+	// when
+	output := helm.RenderTemplate(s.T(), options, s.chartPath, s.release, s.templates)
+	var deployment appsv1.Deployment
+	helm.UnmarshalK8SYaml(s.T(), output, &deployment)
+
+	// then
+	container := deployment.Spec.Template.Spec.Containers[0]
+	s.Require().Equal(container.Image, "subchart.custom.registry.io/camunda/zeebe-test:snapshot")
 }
 
 func (s *deploymentTemplateTest) TestContainerSetImagePullSecretsGlobal() {
@@ -242,8 +265,8 @@ func (s *deploymentTemplateTest) TestContainerShouldSetTemplateEnvVars() {
 
 	// then
 	env := deployment.Spec.Template.Spec.Containers[0].Env
-	s.Require().Contains(env, v12.EnvVar{Name: "RELEASE_NAME", Value: "test-camunda-platform-test"})
-	s.Require().Contains(env, v12.EnvVar{Name: "OTHER_ENV", Value: "nothingToSeeHere"})
+	s.Require().Contains(env, corev1.EnvVar{Name: "RELEASE_NAME", Value: "test-camunda-platform-test"})
+	s.Require().Contains(env, corev1.EnvVar{Name: "OTHER_ENV", Value: "nothingToSeeHere"})
 }
 
 func (s *deploymentTemplateTest) TestContainerSetContainerCommand() {
@@ -593,7 +616,7 @@ func (s *deploymentTemplateTest) TestContainerShouldOverwriteGlobalImagePullPoli
 	helm.UnmarshalK8SYaml(s.T(), output, &deployment)
 
 	// then
-	expectedPullPolicy := v12.PullAlways
+	expectedPullPolicy := corev1.PullAlways
 	containers := deployment.Spec.Template.Spec.Containers
 	s.Require().Equal(1, len(containers))
 	pullPolicy := containers[0].ImagePullPolicy

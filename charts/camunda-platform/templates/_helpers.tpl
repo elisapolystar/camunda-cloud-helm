@@ -26,7 +26,7 @@ by the DNS naming spec). If release name contains chart name it will be used as 
 
 {{/*
 Define common labels, combining the match labels and transient labels, which might change on updating
-(version depending). These labels shouldn't be used on matchLabels selector, since the selectors are immutable.
+(version depending). These labels should not be used on matchLabels selector, since the selectors are immutable.
 */}}
 {{- define "camundaPlatform.labels" -}}
 {{- template "camundaPlatform.matchLabels" . }}
@@ -56,6 +56,29 @@ app.kubernetes.io/part-of: camunda-platform
 {{- end -}}
 
 {{/*
+Set image according the values of "base" or "overlay" values.
+If the "overlay" values exist, they will override the "base" values, otherwise the "base" values will be used.
+Usage: {{ include "camundaPlatform.imageByParams" (dict "base" .Values.global "overlay" .Values.retentionPolicy) }}
+*/}}
+{{- define "camundaPlatform.imageByParams" -}}
+    {{- $imageRegistry := .overlay.image.registry | default .base.image.registry -}}
+    {{- printf "%s%s%s:%s"
+        $imageRegistry
+        (empty $imageRegistry | ternary "" "/")
+        (.overlay.image.repository | default .base.image.repository)
+        (.overlay.image.tag | default .base.image.tag)
+    -}}
+{{- end -}}
+
+{{/*
+Set image according the values of "global" or "subchart" values.
+Usage: {{ include "camundaPlatform.image" . }}
+*/}}
+{{- define "camundaPlatform.image" -}}
+    {{ include "camundaPlatform.imageByParams" (dict "base" .Values.global "overlay" .Values) }}
+{{- end -}}
+
+{{/*
 Set imagePullSecrets according the values of global, subchart, or empty.
 */}}
 {{- define "camundaPlatform.imagePullSecrets" -}}
@@ -71,13 +94,14 @@ Set imagePullSecrets according the values of global, subchart, or empty.
 {{/*
 Keycloak service name should be a max of 20 char since the Keycloak Bitnami Chart is using Wildfly, the node identifier in WildFly is limited to 23 characters.
 Furthermore, this allows changing the referenced Keycloak name inside the sub-charts.
-Subcharts can't access values from other sub-charts or the parent, global only. This is the reason why we have a global value to specify the Keycloak full name.
+Subcharts can not access values from other sub-charts or the parent, global only. This is the reason why we have a global value to specify the Keycloak full name.
 */}}
 
 {{- define "camundaPlatform.issuerBackendUrl" -}}
-{{- if (.Values.global.identity.keycloak.fullname) -}}
-http://{{ .Values.global.identity.keycloak.fullname | trunc 20 | trimSuffix "-" }}:80/auth/realms/camunda-platform
-{{- else -}}
-http://{{ include "common.names.dependency.fullname" (dict "chartName" "keycloak" "chartValues" . "context" $) | trunc 20 | trimSuffix "-" }}:80/auth/realms/camunda-platform
-{{- end -}}
+    {{- $keycloakRealmPath := "/realms/camunda-platform" -}}
+    {{- if .Values.global.identity.keycloak.url -}}
+        {{- include "identity.keycloak.url" . -}}{{- $keycloakRealmPath -}}
+    {{- else -}}
+        http://{{ include "common.names.dependency.fullname" (dict "chartName" "keycloak" "chartValues" . "context" $) | trunc 20 | trimSuffix "-" }}:80{{- include "identity.keycloak.contextPath" . -}}{{ $keycloakRealmPath }}
+    {{- end -}}
 {{- end -}}
