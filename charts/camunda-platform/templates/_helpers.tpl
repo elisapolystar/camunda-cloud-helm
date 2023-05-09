@@ -92,16 +92,53 @@ Set imagePullSecrets according the values of global, subchart, or empty.
 {{- end -}}
 
 {{/*
-Keycloak service name should be a max of 20 char since the Keycloak Bitnami Chart is using Wildfly, the node identifier in WildFly is limited to 23 characters.
-Furthermore, this allows changing the referenced Keycloak name inside the sub-charts.
-Subcharts can not access values from other sub-charts or the parent, global only. This is the reason why we have a global value to specify the Keycloak full name.
+[camunda-platform] Keycloak default URL.
+*/}}
+
+{{- define "camundaPlatform.keycloakDefaultHost" -}}
+    {{- $keycloakDefaultHost := include "common.names.dependency.fullname" (dict "chartName" "keycloak" "chartValues" . "context" $) -}}
+    {{- $keycloakDefaultHost -}}
+{{- end -}}
+
+{{/*
+[camunda-platform] Keycloak URL which could be external.
+*/}}
+
+{{- define "camundaPlatform.keycloakURLBase" -}}
+    http://{{- include "camundaPlatform.keycloakDefaultHost" . -}}:80
+{{- end -}}
+
+{{- define "camundaPlatform.keycloakURL" -}}
+    {{- if .Values.global.identity.keycloak.url -}}
+        {{- include "identity.keycloak.url" . -}}
+    {{- else -}}
+        {{- include "camundaPlatform.keycloakURLBase" . -}}{{- include "identity.keycloak.contextPath" . -}}
+    {{- end -}}
+{{- end -}}
+
+{{/*
+[camunda-platform] Keycloak issuer backend URL which used internally for Camunda apps.
 */}}
 
 {{- define "camundaPlatform.issuerBackendUrl" -}}
-    {{- $keycloakRealmPath := "/realms/camunda-platform" -}}
-    {{- if .Values.global.identity.keycloak.url -}}
-        {{- include "identity.keycloak.url" . -}}{{- $keycloakRealmPath -}}
+    {{- include "camundaPlatform.keycloakURL" . -}}{{- .Values.global.identity.keycloak.realm -}}
+{{- end -}}
+
+{{/*
+[camunda-platform] Elasticsearch URL which could be external.
+*/}}
+
+{{- define "camundaPlatform.elasticsearchURL" -}}
+    {{- if .Values.global.elasticsearch.url -}}
+        {{- .Values.global.elasticsearch.url -}}
     {{- else -}}
-        http://{{ include "common.names.dependency.fullname" (dict "chartName" "keycloak" "chartValues" . "context" $) | trunc 20 | trimSuffix "-" }}:80{{- include "identity.keycloak.contextPath" . -}}{{ $keycloakRealmPath }}
+        {{ .Values.global.elasticsearch.protocol }}://{{ .Values.global.elasticsearch.host }}:{{ .Values.global.elasticsearch.port }}
     {{- end -}}
+{{- end -}}
+
+{{ define "camundaPlatform.operateURL" }}
+  {{- if .Values.operate.enabled -}}
+    {{- print "http://" -}}{{- include "operate.fullname" .Subcharts.operate -}}:{{- .Values.operate.service.port -}}
+    {{- .Values.operate.contextPath -}}
+  {{- end -}}
 {{- end -}}

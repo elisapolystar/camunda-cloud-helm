@@ -45,6 +45,11 @@
   - Docker Image used for Optimize: {{ .Values.optimize.image.repository }}:{{ .Values.global.image.tag }}
     {{- end }}
   {{- end }}
+- Connectors:
+  - Enabled: {{ .Values.connectors.enabled }}
+  {{- if .Values.connectors.enabled }}
+  - Docker Image used for Connectors: {{ .Values.connectors.image.repository }}:{{ .Values.connectors.image.tag }}
+  {{- end }}
 - Identity:
   - Enabled: {{ .Values.identity.enabled }}
   {{- if .Values.identity.enabled }}
@@ -57,10 +62,18 @@
   - Keycloak: {{ .Values.identity.keycloak.image.repository }}:{{ .Values.identity.keycloak.image.tag }}
   {{- end }}
   {{- end }}
+- Web Modeler:
+  - Enabled: {{ .Values.webModeler.enabled }}
+  {{- if .Values.webModeler.enabled }}
+  - Docker images used for Web Modeler:
+    - {{ include "webModeler.restapi.image" . }}
+    - {{ include "webModeler.webapp.image" . }}
+    - {{ include "webModeler.websockets.image" . }}
+  {{- end }}
 - Elasticsearch:
   - Enabled: {{ .Values.elasticsearch.enabled }}
   {{- if .Values.elasticsearch.enabled }}
-  - Elasticsearch URL: http://{{ .Values.global.elasticsearch.host }}:{{ .Values.global.elasticsearch.port }}
+  - Elasticsearch URL: {{ include "camundaPlatform.elasticsearchURL" . }}
   {{- end }}
 
 ### Zeebe
@@ -91,6 +104,14 @@ Tasklist: kubectl port-forward svc/{{ .Release.Name }}-tasklist 8082:80
 {{- end }}
 {{ if .Values.optimize.enabled -}}
 Optimize: kubectl port-forward svc/{{ .Release.Name }}-optimize 8083:80
+{{- end }}
+{{ if .Values.webModeler.enabled }}
+Web Modeler:
+kubectl port-forward svc/{{ include "webModeler.webapp.fullname" . }} 8084:80
+kubectl port-forward svc/{{ include "webModeler.websockets.fullname" . }} 8085:80
+{{- end }}
+{{ if .Values.connectors.enabled -}}
+Connectors: kubectl port-forward svc/{{ .Release.Name }}-connectors 8088:8080
 {{- end }}
 
     {{- if and .Values.global.identity.auth.enabled .Values.identity.enabled }}

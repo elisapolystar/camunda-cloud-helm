@@ -86,13 +86,10 @@ spec:
         {{- if not .Values.global.elasticsearch.disableExporter }}
         - name: ZEEBE_BROKER_EXPORTERS_ELASTICSEARCH_CLASSNAME
           value: "io.camunda.zeebe.exporter.ElasticsearchExporter"
-        {{- if .Values.global.elasticsearch.url }}
         - name: ZEEBE_BROKER_EXPORTERS_ELASTICSEARCH_ARGS_URL
-          value: {{ .Values.global.elasticsearch.url | quote }}
-        {{- else }}
-        - name: ZEEBE_BROKER_EXPORTERS_ELASTICSEARCH_ARGS_URL
-          value: "http://{{ .Values.global.elasticsearch.host }}:{{ .Values.global.elasticsearch.port }}"
-        {{- end }}
+          value: {{ include "camundaPlatform.elasticsearchURL" . | quote }}
+        - name: ZEEBE_BROKER_EXPORTERS_ELASTICSEARCH_ARGS_INDEX_PREFIX
+          value: {{ .Values.global.elasticsearch.prefix | quote }}
         {{- end }}
         - name: ZEEBE_BROKER_NETWORK_COMMANDAPI_PORT
           value: {{ .Values.service.commandPort  | quote }}
@@ -119,13 +116,39 @@ spec:
           name: {{ default "command" .Values.service.commandName  }}
         - containerPort: {{ .Values.service.internalPort  }}
           name: {{ default "internal" .Values.service.internalName  }}
+        {{- if .Values.startupProbe.enabled }}
+        startupProbe:
+          httpGet:
+            path: {{ .Values.contextPath }}{{ .Values.startupProbe.probePath }}
+            port: {{ .Values.service.httpPort  }}
+          initialDelaySeconds: {{ .Values.startupProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.startupProbe.periodSeconds }}
+          successThreshold: {{ .Values.startupProbe.successThreshold }}
+          failureThreshold: {{ .Values.startupProbe.failureThreshold }}
+          timeoutSeconds: {{ .Values.startupProbe.timeoutSeconds }}
+        {{- end }}
+        {{- if .Values.readinessProbe.enabled }}
         readinessProbe:
           httpGet:
-            path: {{ .Values.readinessProbe.probePath }}
-            port: {{ .Values.service.httpPort }}
+            path: {{ .Values.contextPath }}{{ .Values.readinessProbe.probePath }}
+            port: {{ .Values.service.httpPort  }}
+          initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
           periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
           successThreshold: {{ .Values.readinessProbe.successThreshold }}
+          failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
           timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+        {{- end }}
+        {{- if .Values.livenessProbe.enabled }}
+        livenessProbe:
+          httpGet:
+            path: {{ .Values.contextPath }}{{ .Values.livenessProbe.probePath }}
+            port: {{ .Values.service.httpPort  }}
+          initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+          successThreshold: {{ .Values.livenessProbe.successThreshold }}
+          failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
+          timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+        {{- end }}
         resources:
           {{- toYaml .Values.resources | nindent 10 }}
         volumeMounts:
