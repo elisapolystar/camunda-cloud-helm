@@ -36,7 +36,7 @@ global:
     registry: ""
     # Image.tag defines the tag / version which should be used in the chart
     # Don't change the comment after the value, it's needed due to a bug yq. Check Makefile for more details.
-    tag: 8.1.2  # global.image.tag
+    tag: 8.2.3  # global.image.tag
     # Image.pullPolicy defines the image pull policy which should be used https://kubernetes.io/docs/concepts/containers/images/#image-pull-policy
     pullPolicy: IfNotPresent
     # Image.pullSecrets can be used to configure image pull secrets https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod
@@ -213,11 +213,11 @@ zeebe:
     # Service.internalName defines the name of the internal api endpoint, which is used for internal communication
     internalName: "internal"
     # extraPorts can be used to expose any other ports which are required. Can be useful for exporters
-    extraPorts: 
+    extraPorts:
       - name: hazelcast
-        protocol: TCP 
+        protocol: TCP
         port: 5701
-        targetPort: 5701 
+        targetPort: 5701
 
   # ServiceAccount configuration for the service account where the broker pods are assigned to
   serviceAccount:
@@ -668,7 +668,7 @@ optimize:
     repository: camunda/optimize
     # Image.tag can be set to overwrite the global tag, which should be used in that chart
     # Don't change the comment after the value, it's needed due to a bug yq. Check Makefile for more details.
-    tag: 3.9.1  # optimize.image.tag
+    tag: 3.10.0  # optimize.image.tag
     # Image.pullSecrets can be used to configure image pull secrets https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod
     pullSecrets: []
 
@@ -800,6 +800,11 @@ identity:
   # Note: Identity is required by Optimize. If Identity is disabled, then Optimize will be unusable.
   #       If you don't need Optimize, then make sure to disable both: set global.identity.auth.enabled=false AND optimize.enabled=false.
   enabled: false
+  # Note: Identity is required by Optimize and Web Modeler. If Identity is disabled, both Optimize and Web Modeler will be unusable.
+  #       If you need neither Optimize nor Web Modeler, make sure to disable both the Identity authentication and the applications by setting:
+  #         global.identity.auth.enabled=false
+  #         optimize.enabled=false
+  #         webModeler.enabled=false
 
   # FirstUser configuration to configure properties of the first Identity user, which can be used to access all
   # web applications

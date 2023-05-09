@@ -1,7 +1,7 @@
 apiVersion: v2
 name: camunda-platform
-version: 8.1.1
-appVersion: 8.1.x
+version: 8.2.2
+appVersion: 8.2.x
 description: |
   Camunda Platform 8 Self-Managed Helm charts.
   Camunda's process automation platform allows developers to design, automate and improve processes.
@@ -20,35 +20,39 @@ keywords:
 dependencies:
   # Camunda Platform charts.
   - name: identity
-    version: 8.1.1
+    version: 8.2.2
     condition: "identity.enabled"
-    # NOTE: This is used to share Identity image details with its subchart Keycloak.
-    #       It should be part of Identity but Helm 3 missing this option currently (v3.10.x).
-    # TODO: Move this to Identity subchart once "export-values" is implemented.
-    #       https://github.com/helm/helm/pull/10804
     import-values:
+      # NOTE: This is used to share Identity image details with its subchart Keycloak.
+      #       It should be part of Identity but Helm 3 missing this option currently (v3.10.x).
+      # TODO: Move this to Identity subchart once "export-values" is implemented.
+      #       https://github.com/helm/helm/pull/10804
       - child: image
         parent: global.identity.image
   - name: operate
-    version: 8.1.1
+    version: 8.2.2
     condition: "operate.enabled"
   - name: optimize
-    version: 8.1.1
+    version: 8.2.2
     condition: "optimize.enabled"
   - name: tasklist
-    version: 8.1.1
+    version: 8.2.2
     condition: "tasklist.enabled"
   - name: zeebe
-    version: 8.1.1
+    version: 8.2.2
     condition: "zeebe.enabled"
   - name: zeebe-gateway
-    version: 8.1.1
+    version: 8.2.2
     condition: "zeebe.enabled"
   # Dependency charts.
   - name: elasticsearch
     repository: "https://helm.elastic.co"
     version: 7.17.1
     condition: "elasticsearch.enabled"
+  - name: postgresql
+    repository: https://charts.bitnami.com/bitnami
+    version: 11.x.x
+    condition: "postgresql.enabled"
   # Helpers charts.
   - name: common
     repository: https://charts.bitnami.com/bitnami
@@ -68,15 +72,5 @@ annotations:
       url: https://github.com/camunda/camunda-platform-helm
   artifacthub.io/containsSecurityUpdates: "false"
   artifacthub.io/changes: |
-    - kind: added
-      description: "added camunda platform architecture diagram"
-    - kind: added
-      description: "support using custom key for keycloak existing secret"
-    - kind: added
-      description: "support custom keycloak context path"
     - kind: fixed
-      description: "use service for keycloak instead of host"
-    - kind: fixed
-      description: "put keycloak section under identity in NOTES.txt"
-    - kind: fixed
-      description: "set keycloak proxy to global ingress tls"
+      description: "identity connectors secret key"
