@@ -317,6 +317,10 @@ zeebe:
     # ReadinessProbe.timeoutSeconds defines the seconds after the probe times out
     timeoutSeconds: 1
 
+  startupProbe:
+    enabled: false
+  livenessProbe:
+    enabled: false
 # Gateway configuration to define properties related to the standalone gateway
 zeebe-gateway:
   # Replicas defines how many standalone gateways are deployed
@@ -460,6 +464,16 @@ zeebe-gateway:
       enabled: false
       # Ingress.tls.secretName defines the secret name which contains the TLS private key and certificate
       secretName: ""
+
+  startupProbe:
+    enabled: false
+  readinessProbe:
+    enabled: false
+  livenessProbe:
+    enabled: false
+
+connectors:
+  enabled: false
 
 # Operate configuration for the Operate sub chart.
 operate:
